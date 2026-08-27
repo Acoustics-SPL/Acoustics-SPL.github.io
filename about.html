@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About — SSPL Cloud Server</title>
-    <meta name="description" content="Learn about the SSPL Cloud Server Acoustic Data Platform by Solid State Physics Laboratory (DRDO). Project overview, mission, and team information.">
+    <meta name="description"
+        content="Learn about the SSPL Cloud Server Acoustic Data Platform by Solid State Physics Laboratory (DRDO). Project overview, mission, and team information.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <canvas id="particleCanvas"></canvas>
 
@@ -17,7 +22,8 @@
     <nav class="navbar" id="navbar">
         <div class="nav-brand">
             <div class="brand-icon">
-                <img src="logo.webp" alt="DRDO Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
+                <img src="logo.webp" alt="DRDO Logo" width="38" height="38"
+                    style="border-radius:50%; object-fit:cover;">
             </div>
             <div class="brand-text">
                 <span class="brand-name">SSPL</span>
@@ -28,11 +34,18 @@
             <a href="index.html" class="nav-link" id="nav-home">Home</a>
             <a href="about.html" class="nav-link active" id="nav-about">About</a>
             <a href="#" class="nav-link locked" id="nav-data" onclick="checkAuth('data.html')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
                 Acoustic Data
             </a>
             <a href="#" class="nav-link locked" id="nav-settings" onclick="checkAuth('settings.html')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
                 Settings
             </a>
         </div>
@@ -49,14 +62,15 @@
             <div class="page-hero">
                 <div class="page-hero-badge">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="16" x2="12" y2="12"/>
-                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
                     </svg>
                     Public Information
                 </div>
                 <h1>About the Project</h1>
-                <p>SSPL Cloud Server is a secure, cloud-based acoustic data monitoring and analysis platform developed by the Solid State Physics Laboratory, DRDO.</p>
+                <p>SSPL Cloud Server is a secure, cloud-based acoustic data monitoring and analysis platform developed
+                    by the Solid State Physics Laboratory, DRDO.</p>
             </div>
 
             <!-- Project Overview -->
@@ -64,23 +78,27 @@
                 <div class="content-card">
                     <h2>
                         <span class="section-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-                                <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-                                <line x1="12" y1="19" x2="12" y2="23"/>
-                                <line x1="8" y1="23" x2="16" y2="23"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
                             </svg>
                         </span>
                         Project Overview
                     </h2>
-                    <p>The SSPL Cloud Server Acoustic Data Platform is designed to collect, store, analyze, and visualize acoustic measurement data from various experimental setups and field deployments. The platform provides secure access to researchers and engineers for monitoring acoustic parameters in real-time and performing detailed post-processing analysis.</p>
+                    <p>The SSPL Cloud Server Acoustic Data Platform is designed to collect, store, analyze, and
+                        visualize acoustic emission data from various experimental setups and field deployments. The
+                        platform provides secure access to researchers and Scientists for monitoring acoustic parameters
+                        in real-time and performing detailed post-processing analysis.</p>
                     <br>
                     <p>Key capabilities of the platform include:</p>
                     <ul>
-                        <li>Multi-channel acoustic data acquisition and cloud storage</li>
-                        <li>Real-time monitoring of Sound Pressure Level (SPL), frequency, and amplitude</li>
+                        <li>Multi-channel acoustic data acquisition and cloud storage ( single channel for now)</li>
+                        <li>Real-time monitoring of Timestamp, temprature, frequency, and amplitude</li>
                         <li>Configurable alert thresholds and notification systems</li>
-                        <li>Comprehensive data export in multiple formats (CSV, JSON, MATLAB)</li>
+                        <li>Comprehensive data export in multiple formats (CSV, TXT)</li>
                         <li>Historical data archival with advanced search and filtering</li>
                         <li>Secure authentication and role-based access control</li>
                     </ul>
@@ -92,23 +110,24 @@
                 <div class="content-card">
                     <h2>
                         <span class="section-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                             </svg>
                         </span>
                         Platform Statistics
                     </h2>
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <div class="stat-value">4</div>
-                            <div class="stat-label">Data Channels</div>
+                            <div class="stat-value">1</div>
+                            <div class="stat-label">Data Channel</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">48kHz</div>
+                            <div class="stat-value">1MHz</div>
                             <div class="stat-label">Sample Rate</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">24-bit</div>
+                            <div class="stat-value">14-bit</div>
                             <div class="stat-label">Resolution</div>
                         </div>
                         <div class="stat-item">
@@ -124,43 +143,23 @@
                 <div class="content-card">
                     <h2>
                         <span class="section-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                             </svg>
                         </span>
                         Mission & Objectives
                     </h2>
-                    <p>Our mission is to provide a robust, secure, and scalable cloud infrastructure for acoustic data management that supports DRDO's research and development objectives. The platform is built to enable:</p>
+                    <p>Our mission is to provide a robust, secure, and scalable cloud infrastructure for acoustic data
+                        management that supports DRDO's research and development objectives. The platform is built to
+                        enable:</p>
                     <ul>
                         <li>Centralized acoustic data management for multi-site experiments</li>
                         <li>Seamless collaboration between research teams across laboratories</li>
                         <li>Standardized data formats ensuring interoperability and reproducibility</li>
-                        <li>Advanced analytics capabilities with integration to existing signal processing pipelines</li>
+                        <li>Advanced analytics capabilities with integration to existing signal processing pipelines
+                        </li>
                         <li>Compliance with DRDO data security standards and protocols</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Technology Stack -->
-            <div class="content-section">
-                <div class="content-card">
-                    <h2>
-                        <span class="section-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                <line x1="12" y1="22.08" x2="12" y2="12"/>
-                            </svg>
-                        </span>
-                        Technology Stack
-                    </h2>
-                    <p>The SSPL Cloud Server is built on modern, industry-standard technologies:</p>
-                    <ul>
-                        <li><strong>Data Acquisition:</strong> NI DAQ / custom ADC hardware with 4-channel simultaneous sampling</li>
-                        <li><strong>Signal Processing:</strong> Python-based analysis pipeline with NumPy, SciPy, and custom DSP modules</li>
-                        <li><strong>Cloud Infrastructure:</strong> Secure hosted environment with automated backup and disaster recovery</li>
-                        <li><strong>Frontend:</strong> Responsive web interface with real-time data visualization</li>
-                        <li><strong>Data Storage:</strong> Structured database with time-series optimization for acoustic measurements</li>
                     </ul>
                 </div>
             </div>
@@ -170,18 +169,21 @@
                 <div class="content-card">
                     <h2>
                         <span class="section-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                <polyline points="22,6 12,13 2,6" />
                             </svg>
                         </span>
                         Contact & Access
                     </h2>
-                    <p>For access to the acoustic data portal or any inquiries regarding the project, please contact the SSPL Cloud Server administration team.</p>
+                    <p>For access to the acoustic data portal or any inquiries regarding the project, please contact the
+                        SSPL Acoustic Sensor Division.</p>
                     <ul>
                         <li><strong>Organization:</strong> Solid State Physics Laboratory (SSPL), DRDO</li>
                         <li><strong>Location:</strong> Lucknow Road, Timarpur, Delhi — 110054</li>
-                        <li><strong>Access:</strong> Authorized personnel only. Contact the project administrator for credentials.</li>
+                        <li><strong>Access:</strong> Authorized personnel only. Contact the project administrator for
+                            credentials. +91 11 23903760</li>
                     </ul>
                 </div>
             </div>
@@ -224,4 +226,5 @@
         });
     </script>
 </body>
+
 </html>

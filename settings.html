@@ -72,6 +72,10 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         Account
                     </li>
+                    <li class="settings-nav-item" onclick="scrollToSection('admin')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M8 11h8"/></svg>
+                        Admin Actions
+                    </li>
                 </ul>
                 <div style="margin-top:2rem; padding-top:1rem; border-top: 1px solid var(--border-subtle);">
                     <button class="logout-btn" onclick="logout()" style="width:100%; justify-content:center;">
@@ -379,6 +383,22 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- Admin -->
+                <div class="settings-section" id="admin">
+                    <h2 class="settings-section-title" style="color: #ef4444;">Admin Actions</h2>
+                    <p class="settings-section-desc">Dangerous actions that affect the entire platform</p>
+
+                    <div class="setting-row" style="align-items: center; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 16px; border-radius: 8px;">
+                        <div class="setting-info" style="flex: 1;">
+                            <h4 style="color: #ef4444;">Clear Database</h4>
+                            <p style="color: var(--text-secondary);">Permanently delete all acoustic data records from the cloud storage (Sheet1). Headers will be kept intact.</p>
+                        </div>
+                        <button onclick="clearDatabase()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                            Clear Data
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -462,12 +482,44 @@
 
             navItems.forEach((item, i) => {
                 item.classList.remove('active');
-                const sectionIds = ['general', 'acquisition', 'alerts', 'display', 'export', 'account'];
+                const sectionIds = ['general', 'acquisition', 'alerts', 'display', 'export', 'account', 'admin'];
                 if (sectionIds[i] === current) {
                     item.classList.add('active');
                 }
             });
         });
+
+        // Clear Database Logic
+        async function clearDatabase() {
+            const confirmed = confirm("WARNING: This will permanently delete all records from Sheet1.\n\nAre you sure you want to proceed?");
+            if (!confirmed) return;
+            
+            const webAppUrl = prompt("Please enter the Google Apps Script Web App URL to execute this command:", localStorage.getItem('gas_url') || "");
+            if (!webAppUrl) return;
+            
+            // Save for future use
+            localStorage.setItem('gas_url', webAppUrl);
+            
+            showToast("Sending clear command...");
+            
+            try {
+                const response = await fetch(webAppUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" }, // using text/plain to avoid CORS preflight issues sometimes
+                    body: JSON.stringify({ action: "clear" })
+                });
+                
+                const data = await response.json();
+                if (data.status === "success") {
+                    showToast("Success: " + data.message);
+                } else {
+                    alert("Error: " + data.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Failed to clear database. Make sure the Web App URL is correct and deployed with 'Anyone' access.\n\nError: " + err.message);
+            }
+        }
 
         // Warn before leaving with unsaved changes
         window.addEventListener('beforeunload', (e) => {
