@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acoustic Data — SSPL Cloud Server</title>
+    <meta name="description" content="Acoustic measurement data dashboard for SSPL Cloud Server. View and analyze acoustic data records.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Loading Skeleton */
+        .loading-overlay {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            gap: 1.5rem;
+        }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border-subtle);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .loading-subtext {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: -0.75rem;
+        }
+
+        /* Error State */
+        .error-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            gap: 1rem;
+            text-align: center;
+        }
+        .error-state .error-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+        .error-state h3 {
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+        .error-state p {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        .retry-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.5rem;
+            background: var(--gradient-brand);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out);
+            margin-top: 0.5rem;
+        }
+        .retry-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        }
+
+        /* Last fetched indicator */
+        .fetch-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            margin-left: auto;
+        }
+        .fetch-info .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--emerald);
+            animation: status-pulse 2s ease-in-out infinite;
+        }
+
+        /* Dynamic column width adjustments */
+        .data-table td, .data-table th {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-table td:first-child {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">
+                <img src="logo.webp" alt="DRDO Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">SSPL</span>
+                <span class="brand-sub">CLOUD SERVER</span>
+            </div>
+        </div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" id="nav-home">Home</a>
+            <a href="about.html" class="nav-link" id="nav-about">About</a>
+            <a href="data.html" class="nav-link active unlocked" id="nav-data">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Acoustic Data
+            </a>
+            <a href="settings.html" class="nav-link unlocked" id="nav-settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                Settings
+            </a>
+        </div>
+        <div class="nav-status" id="navStatus">
+            <span class="status-dot online"></span>
+            <span class="status-text">Authenticated</span>
+        </div>
+    </nav>
+
+    <!-- Data Content -->
+    <main class="page-container">
+        <div class="page-content" style="max-width: 1400px;">
+            <!-- Header -->
+            <div class="data-header">
+                <div class="data-header-left">
+                    <h1>Acoustic Data Records</h1>
+                    <p>Live data from Google Sheets — Latest 100 records</p>
+                </div>
+                <div class="data-actions">
+                    <div class="fetch-info" id="fetchInfo">
+                        <span class="live-dot"></span>
+                        <span id="lastFetched">Loading...</span>
+                    </div>
+                    <button class="action-btn" id="refreshBtn" onclick="refreshData()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="refreshIcon">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+                        </svg>
+                        Refresh
+                    </button>
+                    <button class="action-btn primary" id="exportBtn" onclick="exportData()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Export CSV
+                    </button>
+                    <button class="logout-btn" onclick="logout()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="data-stats-bar" id="statsBar">
+                <div class="data-stat">
+                    <div class="data-stat-header">
+                        <span class="data-stat-label">Records Loaded</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" id="statTotalRecords">—</div>
+                    <div class="data-stat-change positive" id="statRecordsSub">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Latest 100 shown
+                    </div>
+                </div>
+                <div class="data-stat">
+                    <div class="data-stat-header">
+                        <span class="data-stat-label">Total Columns</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" id="statTotalColumns">—</div>
+                    <div class="data-stat-change positive">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                        Auto-detected
+                    </div>
+                </div>
+                <div class="data-stat">
+                    <div class="data-stat-header">
+                        <span class="data-stat-label">Data Source</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" style="font-size:1rem;">Google Sheets</div>
+                    <div class="data-stat-change positive">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Live connected
+                    </div>
+                </div>
+                <div class="data-stat">
+                    <div class="data-stat-header">
+                        <span class="data-stat-label">Status</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" id="statStatus">—</div>
+                    <div class="data-stat-change positive" id="statStatusSub">Waiting...</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="data-filters">
+                <div class="filter-search">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search across all columns..." oninput="filterData()">
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="data-table-wrapper" id="tableWrapper">
+                <!-- Loading state -->
+                <div class="loading-overlay" id="loadingState">
+                    <div class="loading-spinner"></div>
+                    <span class="loading-text">Fetching data from Google Sheets...</span>
+                    <span class="loading-subtext">Connecting to spreadsheet</span>
+                </div>
+
+                <!-- Error state (hidden by default) -->
+                <div class="error-state" id="errorState" style="display:none;">
+                    <div class="error-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                    </div>
+                    <h3>Failed to Load Data</h3>
+                    <p id="errorMessage">Could not connect to the Google Spreadsheet. Make sure the spreadsheet is shared publicly ("Anyone with the link can view").</p>
+                    <button class="retry-btn" onclick="fetchSheetData()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+                        </svg>
+                        Retry
+                    </button>
+                </div>
+
+                <!-- Data table (hidden until data loads) -->
+                <table class="data-table" id="dataTable" style="display:none;">
+                    <thead id="tableHead">
+                        <!-- Populated dynamically from spreadsheet headers -->
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <!-- Populated dynamically from spreadsheet data -->
+                    </tbody>
+                </table>
+                <div class="table-footer" id="tableFooter" style="display:none;">
+                    <span id="tableInfo">Loading...</span>
+                    <div class="pagination" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <span>© 2024 Solid State Physics Laboratory, DRDO. All Rights Reserved.</span>
+            <span class="footer-sep">·</span>
+            <a href="about.html" class="footer-link">About Project</a>
+        </div>
+    </footer>
+
+    <script src="auth.js"></script>
+    <script src="particles.js"></script>
+    <script>
+        // ============================================
+        //  Google Sheets Configuration
+        // ============================================
+        const SPREADSHEET_ID = '1KWdzI955ltBbcBJWhAF4RTsh92IOi3D1rHnjIwKmHJA';
+        const SHEET_NAME = 'Sheet1'; // Change if your sheet tab has a different name
+        const MAX_ROWS = 100;       // Show latest 100 rows
+
+        // ============================================
+        //  State
+        // ============================================
+        let headers = [];
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 20;
+        let sortCol = -1;
+        let sortAsc = true;
+        let lastFetchTime = null;
+
+        // ============================================
+        //  Auth Guard & Init
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!requireAuth()) return;
+            updateNavStatus(true);
+            fetchSheetData();
+        });
+
+        // ============================================
+        //  Fetch Data from Google Sheets
+        // ============================================
+        function fetchSheetData() {
+            showLoading();
+
+            // Google Visualization API — works with publicly shared sheets
+            // Fetches data as JSON without needing an API key
+            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: Spreadsheet not accessible`);
+                    return response.text();
+                })
+                .then(text => {
+                    // Google returns JSONP-like format: google.visualization.Query.setResponse({...})
+                    // Strip the wrapper to get pure JSON
+                    const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
+                    if (!jsonStr || !jsonStr[1]) {
+                        throw new Error('Invalid response format from Google Sheets');
+                    }
+                    const data = JSON.parse(jsonStr[1]);
+
+                    if (data.status === 'error') {
+                        throw new Error(data.errors?.[0]?.detailed_message || 'Google Sheets API error');
+                    }
+
+                    processSheetData(data.table);
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    showError(error.message);
+                });
+        }
+
+        function processSheetData(table) {
+            // Extract headers from columns
+            headers = table.cols.map(col => col.label || col.id || 'Column');
+
+            // Filter out empty header columns
+            const validIndices = [];
+            headers = headers.filter((h, i) => {
+                const isValid = h && h.trim() !== '';
+                if (isValid) validIndices.push(i);
+                return isValid;
+            });
+
+            // If all headers are blank, use column letters
+            if (headers.every(h => !h || h.trim() === '')) {
+                headers = validIndices.map((_, i) => `Column ${String.fromCharCode(65 + i)}`);
+            }
+
+            // Extract row data
+            const rows = table.rows || [];
+            allData = [];
+
+            for (const row of rows) {
+                const cells = row.c || [];
+                const rowData = {};
+                let hasData = false;
+
+                validIndices.forEach((colIdx, i) => {
+                    const cell = cells[colIdx];
+                    if (cell && cell.v !== null && cell.v !== undefined) {
+                        // Use formatted value if available (preserves date formatting etc.)
+                        rowData[headers[i]] = cell.f || cell.v;
+                        hasData = true;
+                    } else {
+                        rowData[headers[i]] = '';
+                    }
+                });
+
+                // Only add rows that have at least some data
+                if (hasData) {
+                    allData.push(rowData);
+                }
+            }
+
+            // Take only latest MAX_ROWS (last rows in the sheet = most recent)
+            if (allData.length > MAX_ROWS) {
+                allData = allData.slice(allData.length - MAX_ROWS);
+            }
+
+            // Reverse so newest is first
+            allData.reverse();
+
+            filteredData = [...allData];
+            lastFetchTime = new Date();
+
+            // Update UI
+            updateStats();
+            buildTableHeader();
+            currentPage = 1;
+            renderTable();
+            showTable();
+
+            // Update fetch time
+            document.getElementById('lastFetched').textContent = `Updated ${formatTime(lastFetchTime)}`;
+        }
+
+        // ============================================
+        //  UI State Management
+        // ============================================
+        function showLoading() {
+            document.getElementById('loadingState').style.display = 'flex';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'none';
+            document.getElementById('tableFooter').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'flex';
+            document.getElementById('dataTable').style.display = 'none';
+            document.getElementById('tableFooter').style.display = 'none';
+            document.getElementById('errorMessage').textContent = message || 'Could not connect to the Google Spreadsheet. Make sure the spreadsheet is shared publicly ("Anyone with the link can view").';
+
+            document.getElementById('statStatus').textContent = 'Error';
+            document.getElementById('statStatus').style.color = '#f87171';
+            document.getElementById('statStatusSub').textContent = 'Connection failed';
+            document.getElementById('statStatusSub').className = 'data-stat-change negative';
+
+            // Reset refresh button
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = false;
+            document.getElementById('refreshIcon').style.animation = '';
+        }
+
+        function showTable() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'table';
+            document.getElementById('tableFooter').style.display = 'flex';
+        }
+
+        // ============================================
+        //  Build Dynamic Table
+        // ============================================
+        function buildTableHeader() {
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = `<tr>${headers.map((h, i) => 
+                `<th onclick="sortTable(${i})">${escapeHtml(h)} <span class="sort-icon">↕</span></th>`
+            ).join('')}</tr>`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('dataTableBody');
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = Math.min(start + rowsPerPage, filteredData.length);
+            const pageData = filteredData.slice(start, end);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${headers.length}" style="text-align:center;padding:3rem;color:var(--text-tertiary);">No records found</td></tr>`;
+            } else {
+                tbody.innerHTML = pageData.map(row => `<tr>${headers.map(h => {
+                    const val = row[h] !== undefined && row[h] !== null ? row[h] : '';
+                    const isNumeric = !isNaN(val) && val !== '';
+                    return `<td class="${isNumeric ? 'mono value-highlight' : ''}" title="${escapeHtml(String(val))}">${escapeHtml(String(val))}</td>`;
+                }).join('')}</tr>`).join('');
+            }
+
+            // Update footer info
+            document.getElementById('tableInfo').textContent =
+                filteredData.length > 0
+                    ? `Showing ${start + 1}–${end} of ${filteredData.length} records`
+                    : 'No records to display';
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            const pag = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pag.innerHTML = '';
+                return;
+            }
+
+            let html = `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span style="color:var(--text-tertiary);padding:0 0.25rem">…</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span style="color:var(--text-tertiary);padding:0 0.25rem">…</span>`;
+                html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+            pag.innerHTML = html;
+        }
+
+        // ============================================
+        //  Stats
+        // ============================================
+        function updateStats() {
+            document.getElementById('statTotalRecords').textContent = allData.length.toLocaleString();
+            document.getElementById('statTotalColumns').textContent = headers.length;
+            document.getElementById('statStatus').textContent = 'Online';
+            document.getElementById('statStatus').style.color = '';
+            document.getElementById('statStatusSub').textContent = 'Connected';
+            document.getElementById('statStatusSub').className = 'data-stat-change positive';
+        }
+
+        // ============================================
+        //  Filter & Sort
+        // ============================================
+        function filterData() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            if (!search) {
+                filteredData = [...allData];
+            } else {
+                filteredData = allData.filter(row => {
+                    return headers.some(h => {
+                        const val = String(row[h] || '').toLowerCase();
+                        return val.includes(search);
+                    });
+                });
+            }
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        function sortTable(colIndex) {
+            if (sortCol === colIndex) {
+                sortAsc = !sortAsc;
+            } else {
+                sortCol = colIndex;
+                sortAsc = true;
+            }
+
+            const key = headers[colIndex];
+
+            filteredData.sort((a, b) => {
+                let valA = a[key] || '';
+                let valB = b[key] || '';
+
+                // Try numeric comparison
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return sortAsc ? numA - numB : numB - numA;
+                }
+
+                // Fall back to string comparison
+                valA = String(valA);
+                valB = String(valB);
+                return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderTable();
+            document.querySelector('.data-table-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ============================================
+        //  Refresh
+        // ============================================
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            document.getElementById('refreshIcon').style.animation = 'spin 0.8s linear infinite';
+            document.getElementById('lastFetched').textContent = 'Refreshing...';
+
+            // Small delay so user sees the spinner
+            setTimeout(() => {
+                // Re-fetch from Google Sheets
+                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&_t=${Date.now()}`;
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.text();
+                    })
+                    .then(text => {
+                        const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
+                        if (!jsonStr || !jsonStr[1]) throw new Error('Invalid response');
+                        const data = JSON.parse(jsonStr[1]);
+                        if (data.status === 'error') throw new Error(data.errors?.[0]?.detailed_message || 'API error');
+
+                        processSheetData(data.table);
+                        btn.disabled = false;
+                        document.getElementById('refreshIcon').style.animation = '';
+                        showToast(`Data refreshed — ${allData.length} records loaded from Google Sheets`);
+                    })
+                    .catch(error => {
+                        btn.disabled = false;
+                        document.getElementById('refreshIcon').style.animation = '';
+                        showToast('Refresh failed: ' + error.message, 'error');
+                        document.getElementById('lastFetched').textContent = `Last updated ${formatTime(lastFetchTime)}`;
+                    });
+            }, 300);
+        }
+
+        // ============================================
+        //  Export CSV
+        // ============================================
+        function exportData() {
+            if (filteredData.length === 0) {
+                showToast('No data to export', 'error');
+                return;
+            }
+
+            const csvRows = [headers.join(',')];
+
+            filteredData.forEach(row => {
+                csvRows.push(headers.map(h => {
+                    let val = String(row[h] || '');
+                    // Escape commas and quotes
+                    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+                        val = '"' + val.replace(/"/g, '""') + '"';
+                    }
+                    return val;
+                }).join(','));
+            });
+
+            const csv = csvRows.join('\n');
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sspl_acoustic_data_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast(`Exported ${filteredData.length} records to CSV`);
+        }
+
+        // ============================================
+        //  Utilities
+        // ============================================
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        function formatTime(date) {
+            if (!date) return '—';
+            const h = String(date.getHours()).padStart(2, '0');
+            const m = String(date.getMinutes()).padStart(2, '0');
+            const s = String(date.getSeconds()).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+    </script>
+</body>
+</html>
