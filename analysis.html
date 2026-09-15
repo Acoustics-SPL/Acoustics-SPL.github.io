@@ -265,7 +265,13 @@
                     </div>
                 </div>
 
-                <div class="chart-container">
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <button class="action-btn primary" id="toggleGraphBtn" onclick="toggleGraph()">
+                        📊 Show Graph
+                    </button>
+                </div>
+
+                <div class="chart-container" id="chartWrapper" style="display:none;">
                     <canvas id="energyChart"></canvas>
                 </div>
             </div>
@@ -453,26 +459,70 @@
             Chart.defaults.color = '#94a3b8';
             Chart.defaults.font.family = "'Inter', sans-serif";
 
+            // Create arrays of constant values for the threshold lines
+            const noticeLine = Array(labels.length).fill(30);
+            const cautionLine = Array(labels.length).fill(100);
+            const warningLine = Array(labels.length).fill(300);
+            const criticalLine = Array(labels.length).fill(500);
+
             energyChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Cumulative Energy (µJ)',
-                        data: data,
-                        borderColor: '#06b6d4',
-                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        tension: 0.2
-                    }]
+                    datasets: [
+                        {
+                            label: 'Critical (500)',
+                            data: criticalLine,
+                            borderColor: '#ef4444',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Warning (300)',
+                            data: warningLine,
+                            borderColor: '#f97316',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Caution (100)',
+                            data: cautionLine,
+                            borderColor: '#eab308',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Notice (30)',
+                            data: noticeLine,
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Cumulative Energy (µJ)',
+                            data: data,
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.2
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: true, labels: { boxWidth: 12 } }
                     },
                     scales: {
                         y: {
@@ -486,6 +536,22 @@
                     }
                 }
             });
+        }
+
+        function toggleGraph() {
+            const wrapper = document.getElementById('chartWrapper');
+            const btn = document.getElementById('toggleGraphBtn');
+            if (wrapper.style.display === 'none') {
+                wrapper.style.display = 'block';
+                btn.innerHTML = '📊 Hide Graph';
+                // Trigger chart resize after unhiding
+                if (energyChartInstance) {
+                    setTimeout(() => energyChartInstance.resize(), 10);
+                }
+            } else {
+                wrapper.style.display = 'none';
+                btn.innerHTML = '📊 Show Graph';
+            }
         }
 
 
