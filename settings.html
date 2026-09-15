@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings — SSPL Cloud Server</title>
-    <meta name="description" content="Configure SSPL Cloud Server settings for acoustic data monitoring and analysis.">
+    <title>Settings — Acoustics Labs Cloud Server</title>
+    <meta name="description" content="Configure Acoustics Labs Cloud Server settings for acoustic data monitoring and analysis.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -17,10 +17,10 @@
     <nav class="navbar" id="navbar">
         <div class="nav-brand">
             <div class="brand-icon">
-                <img src="logo.webp" alt="DRDO Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
+                <img src="logo.webp" alt="Acoustics Labs Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
             </div>
             <div class="brand-text">
-                <span class="brand-name">SSPL</span>
+                <span class="brand-name">ACOUSTICS LABS</span>
                 <span class="brand-sub">CLOUD SERVER</span>
             </div>
         </div>
@@ -102,10 +102,20 @@
 
                     <div class="setting-row">
                         <div class="setting-info">
+                            <h4>Google Sheets Data Source</h4>
+                            <p>Select which sheet tab to use for data and analysis</p>
+                        </div>
+                        <select class="setting-select" id="sheetSelector" onchange="changeSheet()">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
                             <h4>Server Name</h4>
                             <p>Display name for this server instance</p>
                         </div>
-                        <input type="text" class="setting-input" value="SSPL-AE-SERVER-01" onchange="markChanged()">
+                        <input type="text" class="setting-input" value="ACOUSTICS LABS-AE-SERVER-01" onchange="markChanged()">
                     </div>
 
                     <div class="setting-row">
@@ -259,7 +269,7 @@
                             <h4>Notification Email</h4>
                             <p>Email address for receiving alerts</p>
                         </div>
-                        <input type="email" class="setting-input" placeholder="user@sspl.drdo.in" onchange="markChanged()">
+                        <input type="email" class="setting-input" placeholder="user@acousticslabs.com" onchange="markChanged()">
                     </div>
                 </div>
 
@@ -424,7 +434,7 @@
     <!-- Footer -->
     <footer class="footer" style="margin-bottom: 0;">
         <div class="footer-content">
-            <span>© 2024 Solid State Physics Laboratory, DRDO. All Rights Reserved.</span>
+            <span>© 2024 Acoustics Labs. All Rights Reserved.</span>
             <span class="footer-sep">·</span>
             <a href="about.html" class="footer-link">About Project</a>
         </div>
@@ -433,13 +443,40 @@
     <script src="auth.js"></script>
     <script src="particles.js"></script>
     <script>
-        // --- Auth Guard ---
+        let hasChanges = false;
+        const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyl8_JXkMrk6-D9MQVITdHocBVI7WjEEkE7CfOKLRJ-i73M1rqOtCiw_JYW3N4EttNzmA/exec';
+
         document.addEventListener('DOMContentLoaded', () => {
             if (!requireAuth()) return;
             updateNavStatus(true);
+            fetchAvailableSheets();
         });
 
-        let hasChanges = false;
+        function fetchAvailableSheets() {
+            fetch(WEBHOOK_URL + "?action=get_sheets")
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === "success" && data.sheets) {
+                        const sel = document.getElementById('sheetSelector');
+                        sel.innerHTML = '';
+                        const savedSheet = localStorage.getItem('selectedSheet') || 'Sheet1';
+                        data.sheets.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = s;
+                            if (s === savedSheet) opt.selected = true;
+                            sel.appendChild(opt);
+                        });
+                    }
+                })
+                .catch(err => console.error("Failed to load sheets list", err));
+        }
+
+        function changeSheet() {
+            const sheet = document.getElementById('sheetSelector').value;
+            localStorage.setItem('selectedSheet', sheet);
+            markChanged();
+        }
 
         function scrollToSection(id) {
             const el = document.getElementById(id);

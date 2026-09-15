@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analysis Dashboard — SSPL Cloud Server</title>
+    <title>Analysis Dashboard — Acoustics Labs Cloud Server</title>
     <meta name="description" content="Acoustic analysis dashboard. Includes Landslide threshold detection and Intrusion logic.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -162,10 +162,10 @@
     <nav class="navbar" id="navbar">
         <div class="nav-brand">
             <div class="brand-icon">
-                <img src="logo.webp" alt="DRDO Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
+                <img src="logo.webp" alt="Acoustics Labs Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
             </div>
             <div class="brand-text">
-                <span class="brand-name">SSPL</span>
+                <span class="brand-name">ACOUSTICS LABS</span>
                 <span class="brand-sub">CLOUD SERVER</span>
             </div>
         </div>
@@ -208,8 +208,6 @@
                 </div>
             </div>
 
-            <!-- Stats Bar / Data Source Selector -->
-            <div class="data-stats-bar">
                 <div class="data-stat">
                     <div class="data-stat-header">
                         <span class="data-stat-label">Data Source</span>
@@ -217,24 +215,9 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
                         </span>
                     </div>
-                    <div class="data-stat-value" style="font-size:1rem;">
-                        <select id="sheetSelector" onchange="changeSheet()" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; width: 100%; outline: none; cursor: pointer; font-size: 0.9rem;">
-                            <option value="Sheet1" style="color: black;">Sheet1</option>
-                        </select>
-                    </div>
+                    <div class="data-stat-value" id="displaySheetName" style="font-size:1.2rem;">Sheet1</div>
                     <div class="data-stat-change positive">Live connected</div>
                 </div>
-                <div class="data-stat">
-                    <div class="data-stat-header">
-                        <span class="data-stat-label">Analyzed Records</span>
-                        <span class="data-stat-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                        </span>
-                    </div>
-                    <div class="data-stat-value" id="statTotalRecords">—</div>
-                    <div class="data-stat-change positive" id="statRecordsSub">Waiting...</div>
-                </div>
-            </div>
 
             <div class="tabs-header">
                 <button class="tab-btn active" onclick="switchTab('landslide')">
@@ -247,6 +230,12 @@
                 <div class="stats-grid">
                     <div class="data-stat">
                         <div class="data-stat-header">
+                            <span class="data-stat-label">Threshold Status</span>
+                        </div>
+                        <div class="data-stat-value" id="lsStatus" style="color: #10b981;">SAFE</div>
+                    </div>
+                    <div class="data-stat">
+                        <div class="data-stat-header">
                             <span class="data-stat-label">Cumulative Energy (µJ)</span>
                         </div>
                         <div class="data-stat-value" id="lsTotalEnergy" style="color: var(--cyan);">0.00</div>
@@ -256,12 +245,6 @@
                             <span class="data-stat-label">Total Hit Counts</span>
                         </div>
                         <div class="data-stat-value" id="lsTotalHits" style="color: #a855f7;">0</div>
-                    </div>
-                    <div class="data-stat">
-                        <div class="data-stat-header">
-                            <span class="data-stat-label">Threshold Status</span>
-                        </div>
-                        <div class="data-stat-value" id="lsStatus" style="color: #10b981;">SAFE</div>
                     </div>
                 </div>
 
@@ -276,7 +259,18 @@
                 </div>
             </div>
 
-
+            <div class="data-stats-bar" style="margin-top: 3rem;">
+                <div class="data-stat" style="max-width: 300px; margin: 0 auto; text-align: center;">
+                    <div class="data-stat-header" style="justify-content: center; margin-bottom: 0.5rem;">
+                        <span class="data-stat-label">Total Analyzed Records</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" id="statTotalRecords">—</div>
+                    <div class="data-stat-change positive" id="statRecordsSub" style="justify-content: center; margin-top: 0.5rem;">Waiting...</div>
+                </div>
+            </div>
 
         </div>
     </main>
@@ -285,13 +279,13 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-brand">
-                <img src="logo.webp" alt="DRDO Logo" width="24" height="24">
-                <span>SSPL Cloud Server</span>
+                <img src="logo.webp" alt="Acoustics Labs Logo" width="24" height="24">
+                <span>Acoustics Labs Cloud Server</span>
             </div>
             <div class="footer-meta">
-                <span>Solid State Physics Laboratory</span>
+                <span>Acoustics Labs</span>
                 <span class="footer-dot">•</span>
-                <span>DRDO</span>
+                <span>Acoustics Labs</span>
             </div>
         </div>
     </footer>
@@ -300,7 +294,7 @@
     <script src="particles.js"></script>
     <script>
         const SPREADSHEET_ID = '1KWdzI955ltBbcBJWhAF4RTsh92IOi3D1rHnjIwKmHJA';
-        let currentSheetName = 'Sheet1';
+        let currentSheetName = localStorage.getItem('selectedSheet') || 'Sheet1';
         const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyl8_JXkMrk6-D9MQVITdHocBVI7WjEEkE7CfOKLRJ-i73M1rqOtCiw_JYW3N4EttNzmA/exec';
         
         let allData = [];
@@ -309,34 +303,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (!requireAuth()) return;
             updateNavStatus(true);
-            fetchAvailableSheets();
+            document.getElementById('displaySheetName').textContent = currentSheetName;
             fetchSheetData();
         });
-
-        function fetchAvailableSheets() {
-            fetch(WEBHOOK_URL + "?action=get_sheets")
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === "success" && data.sheets) {
-                        const sel = document.getElementById('sheetSelector');
-                        sel.innerHTML = '';
-                        data.sheets.forEach(s => {
-                            const opt = document.createElement('option');
-                            opt.value = s;
-                            opt.textContent = s;
-                            opt.style.color = "#000";
-                            if (s === currentSheetName) opt.selected = true;
-                            sel.appendChild(opt);
-                        });
-                    }
-                })
-                .catch(err => console.error("Failed to load sheets list", err));
-        }
-
-        function changeSheet() {
-            currentSheetName = document.getElementById('sheetSelector').value;
-            fetchSheetData();
-        }
 
         function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

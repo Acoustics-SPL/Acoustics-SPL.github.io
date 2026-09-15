@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acoustic Data — SSPL Cloud Server</title>
-    <meta name="description" content="Acoustic measurement data dashboard for SSPL Cloud Server. View and analyze acoustic data records.">
+    <title>Acoustic Data — Acoustics Labs Cloud Server</title>
+    <meta name="description" content="Acoustic measurement data dashboard for Acoustics Labs Cloud Server. View and analyze acoustic data records.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -125,10 +125,10 @@
     <nav class="navbar" id="navbar">
         <div class="nav-brand">
             <div class="brand-icon">
-                <img src="logo.webp" alt="DRDO Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
+                <img src="logo.webp" alt="Acoustics Labs Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
             </div>
             <div class="brand-text">
-                <span class="brand-name">SSPL</span>
+                <span class="brand-name">ACOUSTICS LABS</span>
                 <span class="brand-sub">CLOUD SERVER</span>
             </div>
         </div>
@@ -229,15 +229,8 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
                         </span>
                     </div>
-                    <div class="data-stat-value" style="font-size:1rem;">
-                        <select id="sheetSelector" onchange="changeSheet()" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; width: 100%; outline: none; cursor: pointer; font-size: 0.9rem;">
-                            <option value="Sheet1" style="color: black;">Sheet1</option>
-                        </select>
-                    </div>
-                    <div class="data-stat-change positive">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        Live connected
-                    </div>
+                    <div class="data-stat-value" id="displaySheetName" style="font-size:1.2rem;">Sheet1</div>
+                    <div class="data-stat-change positive">Configured in Settings</div>
                 </div>
                 <div class="data-stat">
                     <div class="data-stat-header">
@@ -311,7 +304,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
-            <span>© 2024 Solid State Physics Laboratory, DRDO. All Rights Reserved.</span>
+            <span>© 2024 Acoustics Labs. All Rights Reserved.</span>
             <span class="footer-sep">·</span>
             <a href="about.html" class="footer-link">About Project</a>
         </div>
@@ -324,7 +317,7 @@
         //  Google Sheets Configuration
         // ============================================
         const SPREADSHEET_ID = '1KWdzI955ltBbcBJWhAF4RTsh92IOi3D1rHnjIwKmHJA';
-        let currentSheetName = 'Sheet1'; // Change if your sheet tab has a different name
+        let currentSheetName = localStorage.getItem('selectedSheet') || 'Sheet1';
         const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyl8_JXkMrk6-D9MQVITdHocBVI7WjEEkE7CfOKLRJ-i73M1rqOtCiw_JYW3N4EttNzmA/exec';
         const MAX_ROWS = 100;       // Show latest 100 rows
 
@@ -346,35 +339,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (!requireAuth()) return;
             updateNavStatus(true);
-            fetchAvailableSheets();
+            document.getElementById('displaySheetName').textContent = currentSheetName;
             fetchSheetData();
         });
-        
-        function fetchAvailableSheets() {
-            fetch(WEBHOOK_URL + "?action=get_sheets")
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === "success" && data.sheets) {
-                        const sel = document.getElementById('sheetSelector');
-                        sel.innerHTML = '';
-                        data.sheets.forEach(s => {
-                            const opt = document.createElement('option');
-                            opt.value = s;
-                            opt.textContent = s;
-                            opt.style.color = "#000"; // Black text for dropdown options
-                            if (s === currentSheetName) opt.selected = true;
-                            sel.appendChild(opt);
-                        });
-                    }
-                })
-                .catch(err => console.error("Failed to load sheets list", err));
-        }
-
-        function changeSheet() {
-            const sel = document.getElementById('sheetSelector');
-            currentSheetName = sel.value;
-            fetchSheetData();
-        }
 
         // ============================================
         //  Fetch Data from Google Sheets
@@ -721,7 +688,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `sspl_acoustic_data_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `acoustics_labs_data_${new Date().toISOString().slice(0, 10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
 
