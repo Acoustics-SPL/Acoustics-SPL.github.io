@@ -225,7 +225,11 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
                         </span>
                     </div>
-                    <div class="data-stat-value" style="font-size:1rem;">Google Sheets</div>
+                    <div class="data-stat-value" style="font-size:1rem;">
+                        <select id="sheetSelector" onchange="changeSheet()" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; width: 100%; outline: none; cursor: pointer; font-size: 0.9rem;">
+                            <option value="Sheet1" style="color: black;">Sheet1</option>
+                        </select>
+                    </div>
                     <div class="data-stat-change positive">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         Live connected
@@ -316,7 +320,8 @@
         //  Google Sheets Configuration
         // ============================================
         const SPREADSHEET_ID = '1KWdzI955ltBbcBJWhAF4RTsh92IOi3D1rHnjIwKmHJA';
-        const SHEET_NAME = 'Sheet1'; // Change if your sheet tab has a different name
+        let currentSheetName = 'Sheet1'; // Change if your sheet tab has a different name
+        const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwb3ExiOtJvCxY4ZNN0I1U_ah0SkVLZNkOhGGoKqAXvAOdn_VA-8ysNvxTjyjzIQ4N7kg/exec';
         const MAX_ROWS = 100;       // Show latest 100 rows
 
         // ============================================
@@ -337,8 +342,35 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (!requireAuth()) return;
             updateNavStatus(true);
+            fetchAvailableSheets();
             fetchSheetData();
         });
+        
+        function fetchAvailableSheets() {
+            fetch(WEBHOOK_URL + "?action=get_sheets")
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === "success" && data.sheets) {
+                        const sel = document.getElementById('sheetSelector');
+                        sel.innerHTML = '';
+                        data.sheets.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = s;
+                            opt.style.color = "#000"; // Black text for dropdown options
+                            if (s === currentSheetName) opt.selected = true;
+                            sel.appendChild(opt);
+                        });
+                    }
+                })
+                .catch(err => console.error("Failed to load sheets list", err));
+        }
+
+        function changeSheet() {
+            const sel = document.getElementById('sheetSelector');
+            currentSheetName = sel.value;
+            fetchSheetData();
+        }
 
         // ============================================
         //  Fetch Data from Google Sheets
@@ -348,7 +380,7 @@
 
             // Google Visualization API — works with publicly shared sheets
             // Fetches data as JSON without needing an API key
-            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(currentSheetName)}`;
 
             fetch(url)
                 .then(response => {
@@ -631,7 +663,7 @@
             // Small delay so user sees the spinner
             setTimeout(() => {
                 // Re-fetch from Google Sheets
-                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&_t=${Date.now()}`;
+                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(currentSheetName)}&_t=${Date.now()}`;
 
                 fetch(url)
                     .then(response => {
