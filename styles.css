@@ -1719,6 +1719,10 @@ body::after {
 @media (max-width: 768px) {
     .navbar {
         padding: 0 1rem;
+        background: #080b14; /* Solid background to prevent overlap */
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-bottom: 1px solid var(--border-medium);
     }
 
     .nav-links {
