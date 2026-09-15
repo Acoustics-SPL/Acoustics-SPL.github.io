@@ -7,7 +7,7 @@
 // Credentials (in production, this would be server-side)
 const VALID_CREDENTIALS = {
     username: 'admin',
-    password: 'sspl@2024'
+    password: 'sspl@123'
 };
 
 const AUTH_KEY = 'sspl_auth_token';
