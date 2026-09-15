@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Dashboard — SSPL Cloud Server</title>
+    <meta name="description" content="Acoustic analysis dashboard. Includes Landslide threshold detection and Intrusion logic.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .tabs-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 1rem;
+        }
+        .tab-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            font-family: var(--font-main);
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tab-btn:hover {
+            border-color: var(--cyan);
+            color: var(--text-primary);
+        }
+        .tab-btn.active {
+            background: var(--surface-hover);
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.1);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-container {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: 400px;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        /* Intruder Alert UI */
+        .intruder-alert-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 3rem;
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+        .alert-indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            transition: all 0.5s ease;
+        }
+        .alert-safe {
+            background: rgba(16, 185, 129, 0.1);
+            border: 2px solid #10b981;
+            color: #10b981;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        }
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
+            color: #ef4444;
+            box-shadow: 0 0 50px rgba(239, 68, 68, 0.5);
+            animation: pulse-danger 1s infinite alternate;
+        }
+        @keyframes pulse-danger {
+            from { box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+            to { box-shadow: 0 0 70px rgba(239, 68, 68, 0.8); }
+        }
+
+        .event-log {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .event-log-header {
+            padding: 1rem 1.5rem;
+            background: var(--surface-hover);
+            border-bottom: 1px solid var(--border-subtle);
+            font-weight: 600;
+        }
+        .event-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .event-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .event-item:last-child {
+            border-bottom: none;
+        }
+        .event-time {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .event-severity {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">
+                <img src="logo.webp" alt="DRDO Logo" width="38" height="38" style="border-radius:50%; object-fit:cover;">
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">SSPL</span>
+                <span class="brand-sub">CLOUD SERVER</span>
+            </div>
+        </div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" id="nav-home">Home</a>
+            <a href="about.html" class="nav-link" id="nav-about">About</a>
+            <a href="analysis.html" class="nav-link active unlocked" id="nav-analysis">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Analysis Dashboard
+            </a>
+            <a href="data.html" class="nav-link unlocked" id="nav-data">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                Acoustic Data
+            </a>
+            <a href="settings.html" class="nav-link unlocked" id="nav-settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                Settings
+            </a>
+        </div>
+        <div class="nav-status" id="navStatus">
+            <span class="status-dot online"></span>
+            <span class="status-text">Authenticated</span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="page-container">
+        <div class="page-content" style="max-width: 1400px;">
+            
+            <div class="data-header">
+                <div class="data-header-left">
+                    <h1>Analysis Dashboard</h1>
+                    <p>Advanced algorithmic processing of acoustic history</p>
+                </div>
+                <div class="data-actions">
+                    <button class="action-btn" onclick="fetchSheetData()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                        Re-Analyze
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Bar / Data Source Selector -->
+            <div class="data-stats-bar">
+                <div class="data-stat">
+                    <div class="data-stat-header">
+                        <span class="data-stat-label">Data Source</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" style="font-size:1rem;">
+                        <select id="sheetSelector" onchange="changeSheet()" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; width: 100%; outline: none; cursor: pointer; font-size: 0.9rem;">
+                            <option value="Sheet1" style="color: black;">Sheet1</option>
+                        </select>
+                    </div>
+                    <div class="data-stat-change positive">Live connected</div>
+                </div>
+                <div class="data-stat">
+                    <div class="data-stat-header">
+                        <span class="data-stat-label">Analyzed Records</span>
+                        <span class="data-stat-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                        </span>
+                    </div>
+                    <div class="data-stat-value" id="statTotalRecords">—</div>
+                    <div class="data-stat-change positive" id="statRecordsSub">Waiting...</div>
+                </div>
+            </div>
+
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('landslide')">
+                    🏔️ Landslide Analysis
+                </button>
+                <button class="tab-btn" onclick="switchTab('intruder')">
+                    👁️ Intruder Logic
+                </button>
+            </div>
+
+            <!-- LANDSLIDE TAB -->
+            <div id="tab-landslide" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="data-stat">
+                        <div class="data-stat-header">
+                            <span class="data-stat-label">Cumulative Energy (µJ)</span>
+                        </div>
+                        <div class="data-stat-value" id="lsTotalEnergy" style="color: var(--cyan);">0.00</div>
+                    </div>
+                    <div class="data-stat">
+                        <div class="data-stat-header">
+                            <span class="data-stat-label">Total Hit Counts</span>
+                        </div>
+                        <div class="data-stat-value" id="lsTotalHits" style="color: #a855f7;">0</div>
+                    </div>
+                    <div class="data-stat">
+                        <div class="data-stat-header">
+                            <span class="data-stat-label">Threshold Status</span>
+                        </div>
+                        <div class="data-stat-value" id="lsStatus" style="color: #10b981;">SAFE</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- INTRUDER TAB -->
+            <div id="tab-intruder" class="tab-content">
+                <div class="intruder-alert-box">
+                    <div class="alert-indicator alert-safe" id="intruderIndicator">✓</div>
+                    <h2 id="intruderStatusText" style="margin:0; color:#10b981;">SYSTEM SAFE</h2>
+                    <p style="color:var(--text-secondary); margin:0;">Burst threshold: 3 hits/sec</p>
+                </div>
+
+                <div class="event-log">
+                    <div class="event-log-header">Detected Intrusions Log</div>
+                    <div class="event-list" id="intruderEventList">
+                        <!-- Events populated here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="logo.webp" alt="DRDO Logo" width="24" height="24">
+                <span>SSPL Cloud Server</span>
+            </div>
+            <div class="footer-meta">
+                <span>Solid State Physics Laboratory</span>
+                <span class="footer-dot">•</span>
+                <span>DRDO</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="auth.js"></script>
+    <script src="particles.js"></script>
+    <script>
+        const SPREADSHEET_ID = '1KWdzI955ltBbcBJWhAF4RTsh92IOi3D1rHnjIwKmHJA';
+        let currentSheetName = 'Sheet1';
+        const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyl8_JXkMrk6-D9MQVITdHocBVI7WjEEkE7CfOKLRJ-i73M1rqOtCiw_JYW3N4EttNzmA/exec';
+        
+        let allData = [];
+        let energyChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!requireAuth()) return;
+            updateNavStatus(true);
+            fetchAvailableSheets();
+            fetchSheetData();
+        });
+
+        function fetchAvailableSheets() {
+            fetch(WEBHOOK_URL + "?action=get_sheets")
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === "success" && data.sheets) {
+                        const sel = document.getElementById('sheetSelector');
+                        sel.innerHTML = '';
+                        data.sheets.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = s;
+                            opt.style.color = "#000";
+                            if (s === currentSheetName) opt.selected = true;
+                            sel.appendChild(opt);
+                        });
+                    }
+                })
+                .catch(err => console.error("Failed to load sheets list", err));
+        }
+
+        function changeSheet() {
+            currentSheetName = document.getElementById('sheetSelector').value;
+            fetchSheetData();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        function fetchSheetData() {
+            document.getElementById('statRecordsSub').textContent = "Fetching...";
+            
+            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(currentSheetName)}&_t=${Date.now()}`;
+
+            fetch(url)
+                .then(response => response.text())
+                .then(text => {
+                    const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
+                    if (!jsonStr || !jsonStr[1]) throw new Error('Invalid response');
+                    const data = JSON.parse(jsonStr[1]);
+                    if (data.status === 'error') throw new Error(data.errors?.[0]?.detailed_message);
+                    
+                    processData(data.table);
+                })
+                .catch(err => {
+                    document.getElementById('statRecordsSub').textContent = "Error loading data";
+                    console.error(err);
+                });
+        }
+
+        function processData(table) {
+            if (!table || !table.cols || !table.rows) return;
+
+            const headers = table.cols.map(c => c ? c.label : '').filter(l => l !== '');
+            allData = [];
+
+            table.rows.forEach(row => {
+                const rowData = {};
+                let hasData = false;
+                for (let i = 0; i < headers.length; i++) {
+                    const cell = row.c[i];
+                    if (cell && (cell.v !== null && cell.v !== undefined)) {
+                        rowData[headers[i]] = cell.f || cell.v;
+                        hasData = true;
+                    } else {
+                        rowData[headers[i]] = '';
+                    }
+                }
+                if (hasData) allData.push(rowData);
+            });
+
+            document.getElementById('statTotalRecords').textContent = allData.length;
+            document.getElementById('statRecordsSub').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+
+            runLandslideAnalysis();
+            runIntruderLogic();
+        }
+
+        function runLandslideAnalysis() {
+            let cumulEnergy = 0;
+            let totalHits = 0;
+            
+            const labels = [];
+            const dataPoints = [];
+
+            // Sort data chronologically if possible by DAQ Date / Time
+            // Assuming data is appended chronologically already
+            allData.forEach((row, i) => {
+                const energyStr = row['Energy (pJ)'];
+                if (energyStr !== undefined && energyStr !== '') {
+                    const pj = parseFloat(energyStr);
+                    if (!isNaN(pj)) {
+                        cumulEnergy += (pj / 1000000); // Convert pJ to µJ
+                    }
+                }
+                
+                let countVal = parseInt(row['HIT Count'] || "1");
+                if (isNaN(countVal)) countVal = 1;
+                totalHits += countVal;
+
+                // For chart, sample points to prevent thousands of points lagging
+                if (i % Math.max(1, Math.floor(allData.length / 100)) === 0 || i === allData.length - 1) {
+                    labels.push(row['DAQ Time (GMT)'] || `Row ${i}`);
+                    dataPoints.push(cumulEnergy);
+                }
+            });
+
+            document.getElementById('lsTotalEnergy').textContent = cumulEnergy.toFixed(2);
+            document.getElementById('lsTotalHits').textContent = totalHits.toLocaleString();
+
+            const statusEl = document.getElementById('lsStatus');
+            if (cumulEnergy > 500) {
+                statusEl.textContent = 'CRITICAL';
+                statusEl.style.color = '#ef4444';
+            } else if (cumulEnergy > 300) {
+                statusEl.textContent = 'WARNING';
+                statusEl.style.color = '#f97316';
+            } else if (cumulEnergy > 100) {
+                statusEl.textContent = 'CAUTION';
+                statusEl.style.color = '#eab308';
+            } else if (cumulEnergy > 30) {
+                statusEl.textContent = 'NOTICE';
+                statusEl.style.color = '#10b981';
+            } else {
+                statusEl.textContent = 'SAFE';
+                statusEl.style.color = '#10b981';
+            }
+
+            drawChart(labels, dataPoints);
+        }
+
+        function drawChart(labels, data) {
+            const ctx = document.getElementById('energyChart').getContext('2d');
+            
+            if (energyChartInstance) {
+                energyChartInstance.destroy();
+            }
+
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            energyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Cumulative Energy (µJ)',
+                        data: data,
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            beginAtZero: true
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 10 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function runIntruderLogic() {
+            // Intruder logic detects bursts of hits in a short time window
+            // Data has "DAQ Date" and "DAQ Time (GMT)"
+            const events = [];
+            const threshold = 3; // hits per second
+            
+            // Map timestamps to hit counts
+            const timeBuckets = {};
+            
+            allData.forEach(row => {
+                const date = row['DAQ Date'] || '';
+                let time = row['DAQ Time (GMT)'] || '';
+                // Drop milliseconds if present to group by exact second
+                time = time.split('.')[0]; 
+                
+                const key = date + " " + time;
+                if (!timeBuckets[key]) timeBuckets[key] = 0;
+                timeBuckets[key]++;
+            });
+
+            const keys = Object.keys(timeBuckets).sort();
+            keys.forEach(k => {
+                if (timeBuckets[k] >= threshold) {
+                    events.push({
+                        time: k,
+                        hits: timeBuckets[k]
+                    });
+                }
+            });
+
+            const listEl = document.getElementById('intruderEventList');
+            if (events.length === 0) {
+                listEl.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: var(--text-tertiary);">No intrusion events detected in this data.</div>';
+            } else {
+                listEl.innerHTML = events.reverse().map(e => `
+                    <div class="event-item">
+                        <span class="event-time">${e.time}</span>
+                        <span class="event-severity">${e.hits} hits in 1s</span>
+                    </div>
+                `).join('');
+            }
+
+            // If the last event occurred at the very end of the dataset, trigger active alert
+            const isLatestDataAlert = events.length > 0 && events[0].time === keys[keys.length-1];
+            
+            const ind = document.getElementById('intruderIndicator');
+            const txt = document.getElementById('intruderStatusText');
+            if (isLatestDataAlert) {
+                ind.className = 'alert-indicator alert-danger';
+                ind.innerHTML = '⚠';
+                txt.textContent = 'ACTIVE INTRUSION DETECTED';
+                txt.style.color = '#ef4444';
+            } else {
+                ind.className = 'alert-indicator alert-safe';
+                ind.innerHTML = '✓';
+                txt.textContent = 'SYSTEM SAFE';
+                txt.style.color = '#10b981';
+            }
+        }
+    </script>
+</body>
+</html>
