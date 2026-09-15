@@ -240,9 +240,6 @@
                 <button class="tab-btn active" onclick="switchTab('landslide')">
                     🏔️ Landslide Analysis
                 </button>
-                <button class="tab-btn" onclick="switchTab('intruder')">
-                    👁️ Intruder Logic
-                </button>
             </div>
 
             <!-- LANDSLIDE TAB -->
@@ -273,21 +270,7 @@
                 </div>
             </div>
 
-            <!-- INTRUDER TAB -->
-            <div id="tab-intruder" class="tab-content">
-                <div class="intruder-alert-box">
-                    <div class="alert-indicator alert-safe" id="intruderIndicator">✓</div>
-                    <h2 id="intruderStatusText" style="margin:0; color:#10b981;">SYSTEM SAFE</h2>
-                    <p style="color:var(--text-secondary); margin:0;">Burst threshold: 3 hits/sec</p>
-                </div>
 
-                <div class="event-log">
-                    <div class="event-log-header">Detected Intrusions Log</div>
-                    <div class="event-list" id="intruderEventList">
-                        <!-- Events populated here -->
-                    </div>
-                </div>
-            </div>
 
         </div>
     </main>
@@ -403,7 +386,6 @@
             document.getElementById('statRecordsSub').textContent = `Updated ${new Date().toLocaleTimeString()}`;
 
             runLandslideAnalysis();
-            runIntruderLogic();
         }
 
         function runLandslideAnalysis() {
@@ -416,21 +398,23 @@
             // Sort data chronologically if possible by DAQ Date / Time
             // Assuming data is appended chronologically already
             allData.forEach((row, i) => {
-                const energyStr = row['Energy (pJ)'];
+                const energyStr = row['Energy (pJ)'] || row['Energy'];
                 if (energyStr !== undefined && energyStr !== '') {
-                    const pj = parseFloat(energyStr);
+                    // Remove commas if present and parse
+                    const pj = parseFloat(String(energyStr).replace(/,/g, ''));
                     if (!isNaN(pj)) {
                         cumulEnergy += (pj / 1000000); // Convert pJ to µJ
                     }
                 }
                 
-                let countVal = parseInt(row['HIT Count'] || "1");
+                const countStr = row['HIT Count'] || row['Count'];
+                let countVal = parseInt(countStr || "1");
                 if (isNaN(countVal)) countVal = 1;
                 totalHits += countVal;
 
                 // For chart, sample points to prevent thousands of points lagging
                 if (i % Math.max(1, Math.floor(allData.length / 100)) === 0 || i === allData.length - 1) {
-                    labels.push(row['DAQ Time (GMT)'] || `Row ${i}`);
+                    labels.push(row['DAQ Time (GMT)'] || row['Time'] || `Row ${i}`);
                     dataPoints.push(cumulEnergy);
                 }
             });
@@ -504,65 +488,7 @@
             });
         }
 
-        function runIntruderLogic() {
-            // Intruder logic detects bursts of hits in a short time window
-            // Data has "DAQ Date" and "DAQ Time (GMT)"
-            const events = [];
-            const threshold = 3; // hits per second
-            
-            // Map timestamps to hit counts
-            const timeBuckets = {};
-            
-            allData.forEach(row => {
-                const date = row['DAQ Date'] || '';
-                let time = row['DAQ Time (GMT)'] || '';
-                // Drop milliseconds if present to group by exact second
-                time = time.split('.')[0]; 
-                
-                const key = date + " " + time;
-                if (!timeBuckets[key]) timeBuckets[key] = 0;
-                timeBuckets[key]++;
-            });
 
-            const keys = Object.keys(timeBuckets).sort();
-            keys.forEach(k => {
-                if (timeBuckets[k] >= threshold) {
-                    events.push({
-                        time: k,
-                        hits: timeBuckets[k]
-                    });
-                }
-            });
-
-            const listEl = document.getElementById('intruderEventList');
-            if (events.length === 0) {
-                listEl.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: var(--text-tertiary);">No intrusion events detected in this data.</div>';
-            } else {
-                listEl.innerHTML = events.reverse().map(e => `
-                    <div class="event-item">
-                        <span class="event-time">${e.time}</span>
-                        <span class="event-severity">${e.hits} hits in 1s</span>
-                    </div>
-                `).join('');
-            }
-
-            // If the last event occurred at the very end of the dataset, trigger active alert
-            const isLatestDataAlert = events.length > 0 && events[0].time === keys[keys.length-1];
-            
-            const ind = document.getElementById('intruderIndicator');
-            const txt = document.getElementById('intruderStatusText');
-            if (isLatestDataAlert) {
-                ind.className = 'alert-indicator alert-danger';
-                ind.innerHTML = '⚠';
-                txt.textContent = 'ACTIVE INTRUSION DETECTED';
-                txt.style.color = '#ef4444';
-            } else {
-                ind.className = 'alert-indicator alert-safe';
-                ind.innerHTML = '✓';
-                txt.textContent = 'SYSTEM SAFE';
-                txt.style.color = '#10b981';
-            }
-        }
     </script>
 </body>
 </html>
