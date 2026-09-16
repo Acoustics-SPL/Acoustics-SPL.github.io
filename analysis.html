@@ -574,8 +574,9 @@
             const labels = [];
             const dataPoints = [];
 
-            // Energy decay settings (similar to DAQ v4)
-            const decayRate = 5.0; // µJ per second to deduct
+            // Energy decay settings (pulled from localStorage, in µJ/min)
+            const decayRatePerMin = parseFloat(localStorage.getItem('energyDecayRate')) || 5.0;
+            const decayRate = decayRatePerMin / 60.0; // µJ per second to deduct
             let lastTimeSec = null;
 
             function parseTimeToSeconds(timeStr) {
@@ -766,7 +767,7 @@
 
         const ML_CLASS_NAMES = ['SAFE', 'NOTICE', 'CAUTION', 'WARNING', 'CRITICAL'];
         const ML_CLASS_COLORS = ['#10b981', '#10b981', '#eab308', '#f97316', '#ef4444'];
-        const ML_MODEL_KEY = 'indexeddb://acoustics-warning-model';
+        const ML_MODEL_KEY = 'indexeddb://acoustics-warning-model-v2';
 
         const FEATURE_RANGES = {
             meanAmplitude:  { min: 30,    max: 100 },
@@ -795,36 +796,32 @@
         }
 
         function generateClassFeatures(classIdx) {
+            // Wide-overlap gaussian profiles — forces softer decision boundaries
             const profiles = [
-                // SAFE
-                { meanAmp: [40,5], maxAmpOff: [0,10], freq: [150,50], energy: [500,300], cumE: [10,8], rise: [200,100], dur: [2000,1000], hits: [50,30], hitR: [5,3], enR: [1,0.8],
-                  ampClamp: [30,55], maxClamp: [30,60], freqClamp: [20,400], enClamp: [0,2000], cumClamp: [0,30], riseClamp: [0,800], durClamp: [0,8000], hitsClamp: [1,200], hitRClamp: [0,20], enRClamp: [0,5] },
-                // NOTICE
-                { meanAmp: [52,6], maxAmpOff: [3,15], freq: [250,80], energy: [3000,1500], cumE: [60,20], rise: [500,200], dur: [5000,2000], hits: [300,150], hitR: [20,10], enR: [8,4],
-                  ampClamp: [40,65], maxClamp: [45,75], freqClamp: [50,500], enClamp: [500,8000], cumClamp: [30,100], riseClamp: [100,1500], durClamp: [1000,15000], hitsClamp: [50,800], hitRClamp: [5,50], enRClamp: [2,20] },
-                // CAUTION
-                { meanAmp: [62,6], maxAmpOff: [5,18], freq: [350,100], energy: [10000,5000], cumE: [180,60], rise: [1000,400], dur: [12000,5000], hits: [1000,500], hitR: [50,20], enR: [25,10],
-                  ampClamp: [50,78], maxClamp: [55,85], freqClamp: [100,600], enClamp: [2000,25000], cumClamp: [100,300], riseClamp: [200,2500], durClamp: [3000,30000], hitsClamp: [200,3000], hitRClamp: [15,100], enRClamp: [8,50] },
-                // WARNING
-                { meanAmp: [75,7], maxAmpOff: [5,15], freq: [450,120], energy: [25000,10000], cumE: [380,60], rise: [2000,600], dur: [25000,8000], hits: [3000,1500], hitR: [100,40], enR: [55,20],
-                  ampClamp: [60,90], maxClamp: [70,95], freqClamp: [150,800], enClamp: [8000,45000], cumClamp: [300,500], riseClamp: [500,3500], durClamp: [8000,45000], hitsClamp: [800,7000], hitRClamp: [30,160], enRClamp: [20,85] },
-                // CRITICAL
-                { meanAmp: [88,6], maxAmpOff: [3,12], freq: [600,150], energy: [40000,8000], cumE: [550,40], rise: [3000,800], dur: [35000,10000], hits: [6000,2000], hitR: [150,30], enR: [80,15],
-                  ampClamp: [75,100], maxClamp: [80,100], freqClamp: [200,1000], enClamp: [20000,50000], cumClamp: [500,600], riseClamp: [1000,5000], durClamp: [15000,50000], hitsClamp: [3000,10000], hitRClamp: [80,200], enRClamp: [50,100] }
+                // SAFE: low values, wide std
+                { meanAmp: [38,10], freq: [120,100], energy: [300,800], cumE: [5,15], rise: [150,200], dur: [1500,2000], hits: [30,60], hitR: [3,6], enR: [0.5,2] },
+                // NOTICE: slightly elevated
+                { meanAmp: [48,12], freq: [200,120], energy: [2000,3500], cumE: [40,45], rise: [400,350], dur: [4000,3500], hits: [200,300], hitR: [15,18], enR: [5,7] },
+                // CAUTION: moderate
+                { meanAmp: [58,14], freq: [300,140], energy: [8000,9000], cumE: [140,90], rise: [800,550], dur: [10000,7000], hits: [700,700], hitR: [40,35], enR: [18,18] },
+                // WARNING: high
+                { meanAmp: [70,14], freq: [400,160], energy: [20000,16000], cumE: [320,110], rise: [1800,900], dur: [22000,11000], hits: [2500,2200], hitR: [85,55], enR: [45,28] },
+                // CRITICAL: very high
+                { meanAmp: [85,12], freq: [550,200], energy: [35000,14000], cumE: [500,90], rise: [3000,1100], dur: [35000,13000], hits: [5500,3500], hitR: [140,50], enR: [75,22] }
             ];
             const p = profiles[classIdx];
-            const meanAmp = clamp(gaussNoise(...p.meanAmp), ...p.ampClamp);
-            const maxAmp = clamp(meanAmp + (p.maxAmpOff[0] + Math.random() * (p.maxAmpOff[1] - p.maxAmpOff[0])), ...p.maxClamp);
+            const meanAmp = clamp(gaussNoise(p.meanAmp[0], p.meanAmp[1]), 30, 100);
+            const maxAmp = clamp(meanAmp + Math.random() * 15, 30, 100);
             return [
                 meanAmp, maxAmp,
-                clamp(gaussNoise(...p.freq), ...p.freqClamp),
-                clamp(gaussNoise(...p.energy), ...p.enClamp),
-                clamp(gaussNoise(...p.cumE), ...p.cumClamp),
-                clamp(gaussNoise(...p.rise), ...p.riseClamp),
-                clamp(gaussNoise(...p.dur), ...p.durClamp),
-                clamp(Math.floor(gaussNoise(...p.hits)), ...p.hitsClamp),
-                clamp(gaussNoise(...p.hitR), ...p.hitRClamp),
-                clamp(gaussNoise(...p.enR), ...p.enRClamp)
+                clamp(gaussNoise(p.freq[0], p.freq[1]), 20, 1000),
+                clamp(gaussNoise(p.energy[0], p.energy[1]), 0, 50000),
+                clamp(gaussNoise(p.cumE[0], p.cumE[1]), 0, 600),
+                clamp(gaussNoise(p.rise[0], p.rise[1]), 0, 5000),
+                clamp(gaussNoise(p.dur[0], p.dur[1]), 0, 50000),
+                clamp(Math.floor(gaussNoise(p.hits[0], p.hits[1])), 0, 10000),
+                clamp(gaussNoise(p.hitR[0], p.hitR[1]), 0, 200),
+                clamp(gaussNoise(p.enR[0], p.enR[1]), 0, 100)
             ];
         }
 
@@ -849,9 +846,9 @@
 
             updateMLBadge('loading', 'Training Model...');
 
-            // Generate synthetic data
+            // Generate synthetic data — wide overlap for softer boundaries
             const xs = [], ys = [];
-            for (let i = 0; i < 12000; i++) {
+            for (let i = 0; i < 15000; i++) {
                 const cls = Math.floor(Math.random() * 5);
                 xs.push(normalizeFeatures(generateClassFeatures(cls)));
                 ys.push(cls);
@@ -860,29 +857,23 @@
             const xsTensor = tf.tensor2d(xs);
             const ysTensor = tf.oneHot(tf.tensor1d(ys, 'int32'), 5);
 
+            // Simpler model — less capacity = less overconfident
             const model = tf.sequential();
-            model.add(tf.layers.dense({ inputShape: [10], units: 64, activation: 'relu' }));
-            model.add(tf.layers.batchNormalization());
-            model.add(tf.layers.dropout({ rate: 0.3 }));
-            model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
-            model.add(tf.layers.batchNormalization());
-            model.add(tf.layers.dropout({ rate: 0.2 }));
+            model.add(tf.layers.dense({ inputShape: [10], units: 32, activation: 'relu' }));
+            model.add(tf.layers.dropout({ rate: 0.4 }));
             model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+            model.add(tf.layers.dropout({ rate: 0.3 }));
             model.add(tf.layers.dense({ units: 5, activation: 'softmax' }));
 
             model.compile({
-                optimizer: tf.train.adam(0.001),
+                optimizer: tf.train.adam(0.002),
                 loss: 'categoricalCrossentropy',
                 metrics: ['accuracy']
             });
 
-            const splitIdx = Math.floor(xs.length * 0.8);
-            const xTrain = xsTensor.slice([0, 0], [splitIdx, 10]);
-            const yTrain = ysTensor.slice([0, 0], [splitIdx, 5]);
-
-            await model.fit(xTrain, yTrain, {
-                epochs: 40,
-                batchSize: 64,
+            await model.fit(xsTensor, ysTensor, {
+                epochs: 25,
+                batchSize: 128,
                 shuffle: true,
                 verbose: 0
             });
@@ -893,9 +884,8 @@
 
             // Cleanup
             xsTensor.dispose(); ysTensor.dispose();
-            xTrain.dispose(); yTrain.dispose();
 
-            console.log('ML model trained and cached');
+            console.log('ML model v2 trained and cached');
             updateMLBadge('ready', 'Model Ready');
         }
 
@@ -981,6 +971,16 @@
             ];
         }
 
+        // --- Temperature-scaled softmax for readable probabilities ---
+
+        function temperatureSoftmax(logits, temperature) {
+            const scaled = logits.map(l => l / temperature);
+            const maxL = Math.max(...scaled);
+            const exps = scaled.map(l => Math.exp(l - maxL));
+            const sumExp = exps.reduce((a, b) => a + b, 0);
+            return exps.map(e => e / sumExp);
+        }
+
         // --- ML Prediction ---
 
         async function runMLPrediction() {
@@ -992,9 +992,16 @@
             const normalized = normalizeFeatures(rawFeatures);
             const inputTensor = tf.tensor2d([normalized]);
             const prediction = mlModel.predict(inputTensor);
-            const probabilities = await prediction.data();
+            const rawProbs = await prediction.data();
             inputTensor.dispose();
             prediction.dispose();
+
+            // Apply temperature scaling to spread out probabilities
+            const logits = Array.from(rawProbs).map(p => Math.log(Math.max(p, 1e-8)));
+            const probabilities = temperatureSoftmax(logits, 2.0);
+
+            console.log('ML raw probs:', Array.from(rawProbs).map(p => p.toFixed(4)));
+            console.log('ML scaled probs:', probabilities.map(p => p.toFixed(4)));
 
             const maxIdx = probabilities.indexOf(Math.max(...probabilities));
             const confidence = probabilities[maxIdx];
