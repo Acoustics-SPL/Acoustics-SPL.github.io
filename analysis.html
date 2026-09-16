@@ -574,9 +574,42 @@
             const labels = [];
             const dataPoints = [];
 
+            // Energy decay settings (similar to DAQ v4)
+            const decayRate = 5.0; // µJ per second to deduct
+            let lastTimeSec = null;
+
+            function parseTimeToSeconds(timeStr) {
+                if (!timeStr) return 0;
+                const parts = String(timeStr).split(':');
+                if (parts.length >= 3) {
+                    return parseFloat(parts[0])*3600 + parseFloat(parts[1])*60 + parseFloat(parts[2]);
+                }
+                const date = new Date(timeStr);
+                if (!isNaN(date.getTime())) return date.getTime() / 1000;
+                return 0;
+            }
+
             // Sort data chronologically if possible by DAQ Date / Time
             // Assuming data is appended chronologically already
             allData.forEach((row, i) => {
+                // Handle Time & Decay
+                const timeStr = row['DAQ Time (GMT)'] || row['Time'] || '';
+                const currentSec = parseTimeToSeconds(timeStr);
+                
+                if (lastTimeSec !== null && currentSec > 0) {
+                    let dt = currentSec - lastTimeSec;
+                    // Handle day rollover or weird jumps
+                    if (dt < 0) dt = 0; 
+                    if (dt > 3600) dt = 3600; // Cap dt to 1 hour max
+
+                    const decay = dt * decayRate;
+                    cumulEnergy = Math.max(0, cumulEnergy - decay);
+                }
+                if (currentSec > 0) {
+                    lastTimeSec = currentSec;
+                }
+
+                // Handle Energy addition
                 const energyStr = row['Energy (pJ)'] || row['Energy'];
                 if (energyStr !== undefined && energyStr !== '') {
                     // Remove commas if present and parse
@@ -593,7 +626,7 @@
 
                 // For chart, sample points to prevent thousands of points lagging
                 if (i % Math.max(1, Math.floor(allData.length / 100)) === 0 || i === allData.length - 1) {
-                    labels.push(row['DAQ Time (GMT)'] || row['Time'] || `Row ${i}`);
+                    labels.push(timeStr || `Row ${i}`);
                     dataPoints.push(cumulEnergy);
                 }
             });
