@@ -253,6 +253,18 @@
 
                     <div class="setting-row">
                         <div class="setting-info">
+                            <h4>Energy Decay Rate</h4>
+                            <p>Rate at which cumulative energy decays (µJ per minute)</p>
+                        </div>
+                        <select class="setting-select" id="energyDecayRate" onchange="saveDecayRate()">
+                            <option value="1">1 µJ / min</option>
+                            <option value="5">5 µJ / min</option>
+                            <option value="10">10 µJ / min</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
                             <h4>SPL Critical Threshold</h4>
                             <p>SPL level (dB) that triggers a critical alert</p>
                         </div>
@@ -479,11 +491,24 @@
             if (mlPushToggle && mlPushSaved !== null) {
                 mlPushToggle.checked = mlPushSaved !== 'false';
             }
+
+            // Restore Energy Decay Rate
+            const savedDecayRate = localStorage.getItem('energyDecayRate') || '5';
+            const decaySelect = document.getElementById('energyDecayRate');
+            if (decaySelect) decaySelect.value = savedDecayRate;
         });
 
         function toggleMLPush(checkbox) {
             localStorage.setItem('mlPushNotifications', checkbox.checked ? 'true' : 'false');
             markChanged();
+        }
+
+        function saveDecayRate() {
+            const select = document.getElementById('energyDecayRate');
+            if (select) {
+                localStorage.setItem('energyDecayRate', select.value);
+                markChanged();
+            }
         }
 
         function fetchAvailableSheets() {
