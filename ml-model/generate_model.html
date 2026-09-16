@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate ML Model — Acoustics Labs</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0a0e1a; color: #e2e8f0; padding: 2rem; }
+        h1 { margin-bottom: 1rem; color: #06b6d4; }
+        .log { background: #1e293b; border-radius: 8px; padding: 1rem; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; line-height: 1.8; white-space: pre-wrap; margin-bottom: 1rem; }
+        button { padding: 0.75rem 2rem; background: linear-gradient(135deg, #06b6d4, #8b5cf6); border: none; border-radius: 8px; color: white; font-size: 1rem; font-weight: 600; cursor: pointer; margin-right: 1rem; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .info { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>🧠 Acoustics Labs — ML Model Generator</h1>
+    <p class="info">This page trains a TensorFlow.js neural network on synthetic acoustic emission data and exports the model files. Run this once to generate the model, then place the output files in the <code>ml-model/</code> directory.</p>
+    
+    <button id="trainBtn" onclick="trainModel()">Train Model</button>
+    <button id="downloadBtn" onclick="downloadModel()" disabled>Download Model</button>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        let trainedModel = null;
+
+        // Normalization constants (min/max for each feature) — stored alongside the model
+        const FEATURE_NAMES = [
+            'meanAmplitude', 'maxAmplitude', 'meanFreq', 'meanEnergy',
+            'cumulEnergy', 'meanRiseTime', 'meanDuration', 'totalHits',
+            'hitRate', 'energyRate'
+        ];
+
+        // These min/max ranges define the normalization bounds for each feature
+        // Derived from realistic AE sensor ranges
+        const FEATURE_RANGES = {
+            meanAmplitude:  { min: 30,    max: 100 },   // dB
+            maxAmplitude:   { min: 30,    max: 100 },   // dB
+            meanFreq:       { min: 20,    max: 1000 },  // kHz
+            meanEnergy:     { min: 0,     max: 50000 }, // pJ
+            cumulEnergy:    { min: 0,     max: 600 },   // µJ
+            meanRiseTime:   { min: 0,     max: 5000 },  // µs
+            meanDuration:   { min: 0,     max: 50000 }, // µs
+            totalHits:      { min: 0,     max: 10000 },
+            hitRate:        { min: 0,     max: 200 },   // hits/min
+            energyRate:     { min: 0,     max: 100 }    // µJ/min
+        };
+
+        const CLASS_NAMES = ['SAFE', 'NOTICE', 'CAUTION', 'WARNING', 'CRITICAL'];
+
+        function log(msg) {
+            const el = document.getElementById('log');
+            el.textContent += msg + '\n';
+            el.scrollTop = el.scrollHeight;
+        }
+
+        // Generate synthetic training data based on domain knowledge
+        function generateTrainingData(numSamples = 10000) {
+            const xs = [];
+            const ys = [];
+
+            for (let i = 0; i < numSamples; i++) {
+                // Randomly pick a class
+                const classIdx = Math.floor(Math.random() * 5);
+                
+                let features;
+                switch (classIdx) {
+                    case 0: // SAFE
+                        features = generateSafeFeatures();
+                        break;
+                    case 1: // NOTICE
+                        features = generateNoticeFeatures();
+                        break;
+                    case 2: // CAUTION
+                        features = generateCautionFeatures();
+                        break;
+                    case 3: // WARNING
+                        features = generateWarningFeatures();
+                        break;
+                    case 4: // CRITICAL
+                        features = generateCriticalFeatures();
+                        break;
+                }
+
+                xs.push(features);
+                ys.push(classIdx);
+            }
+
+            return { xs, ys };
+        }
+
+        function randRange(min, max) {
+            return min + Math.random() * (max - min);
+        }
+
+        function gaussNoise(mean, std) {
+            // Box-Muller transform
+            const u1 = Math.random();
+            const u2 = Math.random();
+            return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        }
+
+        function clamp(val, min, max) {
+            return Math.max(min, Math.min(max, val));
+        }
+
+        function generateSafeFeatures() {
+            const meanAmp = clamp(gaussNoise(40, 5), 30, 55);
+            const maxAmp = clamp(meanAmp + randRange(0, 10), 30, 60);
+            const meanFreq = clamp(gaussNoise(150, 50), 20, 400);
+            const meanEnergy = clamp(gaussNoise(500, 300), 0, 2000);
+            const cumulEnergy = clamp(gaussNoise(10, 8), 0, 30);
+            const meanRiseTime = clamp(gaussNoise(200, 100), 0, 800);
+            const meanDuration = clamp(gaussNoise(2000, 1000), 0, 8000);
+            const totalHits = clamp(Math.floor(gaussNoise(50, 30)), 1, 200);
+            const hitRate = clamp(gaussNoise(5, 3), 0, 20);
+            const energyRate = clamp(gaussNoise(1, 0.8), 0, 5);
+            return [meanAmp, maxAmp, meanFreq, meanEnergy, cumulEnergy, meanRiseTime, meanDuration, totalHits, hitRate, energyRate];
+        }
+
+        function generateNoticeFeatures() {
+            const meanAmp = clamp(gaussNoise(52, 6), 40, 65);
+            const maxAmp = clamp(meanAmp + randRange(3, 15), 45, 75);
+            const meanFreq = clamp(gaussNoise(250, 80), 50, 500);
+            const meanEnergy = clamp(gaussNoise(3000, 1500), 500, 8000);
+            const cumulEnergy = clamp(gaussNoise(60, 20), 30, 100);
+            const meanRiseTime = clamp(gaussNoise(500, 200), 100, 1500);
+            const meanDuration = clamp(gaussNoise(5000, 2000), 1000, 15000);
+            const totalHits = clamp(Math.floor(gaussNoise(300, 150)), 50, 800);
+            const hitRate = clamp(gaussNoise(20, 10), 5, 50);
+            const energyRate = clamp(gaussNoise(8, 4), 2, 20);
+            return [meanAmp, maxAmp, meanFreq, meanEnergy, cumulEnergy, meanRiseTime, meanDuration, totalHits, hitRate, energyRate];
+        }
+
+        function generateCautionFeatures() {
+            const meanAmp = clamp(gaussNoise(62, 6), 50, 78);
+            const maxAmp = clamp(meanAmp + randRange(5, 18), 55, 85);
+            const meanFreq = clamp(gaussNoise(350, 100), 100, 600);
+            const meanEnergy = clamp(gaussNoise(10000, 5000), 2000, 25000);
+            const cumulEnergy = clamp(gaussNoise(180, 60), 100, 300);
+            const meanRiseTime = clamp(gaussNoise(1000, 400), 200, 2500);
+            const meanDuration = clamp(gaussNoise(12000, 5000), 3000, 30000);
+            const totalHits = clamp(Math.floor(gaussNoise(1000, 500)), 200, 3000);
+            const hitRate = clamp(gaussNoise(50, 20), 15, 100);
+            const energyRate = clamp(gaussNoise(25, 10), 8, 50);
+            return [meanAmp, maxAmp, meanFreq, meanEnergy, cumulEnergy, meanRiseTime, meanDuration, totalHits, hitRate, energyRate];
+        }
+
+        function generateWarningFeatures() {
+            const meanAmp = clamp(gaussNoise(75, 7), 60, 90);
+            const maxAmp = clamp(meanAmp + randRange(5, 15), 70, 95);
+            const meanFreq = clamp(gaussNoise(450, 120), 150, 800);
+            const meanEnergy = clamp(gaussNoise(25000, 10000), 8000, 45000);
+            const cumulEnergy = clamp(gaussNoise(380, 60), 300, 500);
+            const meanRiseTime = clamp(gaussNoise(2000, 600), 500, 3500);
+            const meanDuration = clamp(gaussNoise(25000, 8000), 8000, 45000);
+            const totalHits = clamp(Math.floor(gaussNoise(3000, 1500)), 800, 7000);
+            const hitRate = clamp(gaussNoise(100, 40), 30, 160);
+            const energyRate = clamp(gaussNoise(55, 20), 20, 85);
+            return [meanAmp, maxAmp, meanFreq, meanEnergy, cumulEnergy, meanRiseTime, meanDuration, totalHits, hitRate, energyRate];
+        }
+
+        function generateCriticalFeatures() {
+            const meanAmp = clamp(gaussNoise(88, 6), 75, 100);
+            const maxAmp = clamp(meanAmp + randRange(3, 12), 80, 100);
+            const meanFreq = clamp(gaussNoise(600, 150), 200, 1000);
+            const meanEnergy = clamp(gaussNoise(40000, 8000), 20000, 50000);
+            const cumulEnergy = clamp(gaussNoise(550, 40), 500, 600);
+            const meanRiseTime = clamp(gaussNoise(3000, 800), 1000, 5000);
+            const meanDuration = clamp(gaussNoise(35000, 10000), 15000, 50000);
+            const totalHits = clamp(Math.floor(gaussNoise(6000, 2000)), 3000, 10000);
+            const hitRate = clamp(gaussNoise(150, 30), 80, 200);
+            const energyRate = clamp(gaussNoise(80, 15), 50, 100);
+            return [meanAmp, maxAmp, meanFreq, meanEnergy, cumulEnergy, meanRiseTime, meanDuration, totalHits, hitRate, energyRate];
+        }
+
+        // Normalize features to [0, 1] using known ranges
+        function normalizeFeatures(features) {
+            const keys = Object.keys(FEATURE_RANGES);
+            return features.map((val, i) => {
+                const range = FEATURE_RANGES[keys[i]];
+                return (val - range.min) / (range.max - range.min);
+            });
+        }
+
+        async function trainModel() {
+            const btn = document.getElementById('trainBtn');
+            btn.disabled = true;
+            log('🔄 Generating synthetic training data...');
+
+            const { xs: rawXs, ys: rawYs } = generateTrainingData(15000);
+            
+            // Normalize
+            const normalizedXs = rawXs.map(f => normalizeFeatures(f));
+            
+            log(`✅ Generated ${rawXs.length} samples across ${CLASS_NAMES.length} classes`);
+            log(`   Features per sample: ${FEATURE_NAMES.length}`);
+
+            // Convert to tensors
+            const xsTensor = tf.tensor2d(normalizedXs);
+            const ysTensor = tf.oneHot(tf.tensor1d(rawYs, 'int32'), 5);
+
+            log('🏗️ Building model architecture...');
+            
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ inputShape: [10], units: 64, activation: 'relu' }));
+            model.add(tf.layers.batchNormalization());
+            model.add(tf.layers.dropout({ rate: 0.3 }));
+            model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+            model.add(tf.layers.batchNormalization());
+            model.add(tf.layers.dropout({ rate: 0.2 }));
+            model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+            model.add(tf.layers.dense({ units: 5, activation: 'softmax' }));
+
+            model.compile({
+                optimizer: tf.train.adam(0.001),
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            model.summary(undefined, undefined, (line) => log(line));
+
+            log('\n🚀 Training started...\n');
+
+            // Split: 80% train, 20% validation
+            const splitIdx = Math.floor(normalizedXs.length * 0.8);
+            const xTrain = xsTensor.slice([0, 0], [splitIdx, 10]);
+            const yTrain = ysTensor.slice([0, 0], [splitIdx, 5]);
+            const xVal = xsTensor.slice([splitIdx, 0], [-1, 10]);
+            const yVal = ysTensor.slice([splitIdx, 0], [-1, 5]);
+
+            await model.fit(xTrain, yTrain, {
+                epochs: 50,
+                batchSize: 64,
+                validationData: [xVal, yVal],
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        if ((epoch + 1) % 5 === 0 || epoch === 0) {
+                            log(`  Epoch ${epoch + 1}/50 — loss: ${logs.loss.toFixed(4)}, acc: ${logs.acc.toFixed(4)}, val_loss: ${logs.val_loss.toFixed(4)}, val_acc: ${logs.val_acc.toFixed(4)}`);
+                        }
+                    }
+                }
+            });
+
+            // Final evaluation
+            const evalResult = model.evaluate(xVal, yVal);
+            const finalLoss = (await evalResult[0].data())[0];
+            const finalAcc = (await evalResult[1].data())[0];
+            log(`\n✅ Training complete!`);
+            log(`   Final validation loss: ${finalLoss.toFixed(4)}`);
+            log(`   Final validation accuracy: ${(finalAcc * 100).toFixed(1)}%`);
+
+            trainedModel = model;
+
+            // Cleanup tensors
+            xsTensor.dispose();
+            ysTensor.dispose();
+            xTrain.dispose();
+            yTrain.dispose();
+            xVal.dispose();
+            yVal.dispose();
+
+            document.getElementById('downloadBtn').disabled = false;
+            log('\n📥 Click "Download Model" to save the model files.');
+        }
+
+        async function downloadModel() {
+            if (!trainedModel) return;
+            log('💾 Saving model...');
+            
+            await trainedModel.save('downloads://acoustics-warning-model');
+            
+            // Also save normalization config
+            const config = {
+                featureNames: FEATURE_NAMES,
+                featureRanges: FEATURE_RANGES,
+                classNames: CLASS_NAMES
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'model-config.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+
+            log('✅ Model files downloaded! Place them in the ml-model/ directory:');
+            log('   - acoustics-warning-model.json → ml-model/model.json');
+            log('   - acoustics-warning-model.weights.bin → ml-model/group1-shard1of1.bin');
+            log('   - model-config.json → ml-model/model-config.json');
+        }
+    </script>
+</body>
+</html>

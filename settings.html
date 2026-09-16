@@ -277,6 +277,17 @@
                         </div>
                         <input type="email" class="setting-input" placeholder="user@acousticslabs.com" onchange="markChanged()">
                     </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h4>ML Push Notifications</h4>
+                            <p>Browser push notifications when TensorFlow.js ML model detects WARNING or CRITICAL states</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="mlPushToggle" checked onchange="toggleMLPush(this)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Display -->
@@ -461,7 +472,19 @@
             const savedInterval = localStorage.getItem('refreshInterval') || '5';
             const intervalSelect = document.getElementById('refreshInterval');
             if (intervalSelect) intervalSelect.value = savedInterval;
+
+            // Restore ML push notification toggle
+            const mlPushSaved = localStorage.getItem('mlPushNotifications');
+            const mlPushToggle = document.getElementById('mlPushToggle');
+            if (mlPushToggle && mlPushSaved !== null) {
+                mlPushToggle.checked = mlPushSaved !== 'false';
+            }
         });
+
+        function toggleMLPush(checkbox) {
+            localStorage.setItem('mlPushNotifications', checkbox.checked ? 'true' : 'false');
+            markChanged();
+        }
 
         function fetchAvailableSheets() {
             fetch(WEBHOOK_URL + "?action=get_sheets")

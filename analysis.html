@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0"></script>
     <style>
         .tabs-header {
             display: flex;
@@ -153,6 +154,161 @@
             background: rgba(239, 68, 68, 0.1);
             color: #ef4444;
         }
+
+        /* ML Prediction Section */
+        .ml-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+        .ml-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        .ml-section-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .ml-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .ml-badge.loading {
+            background: rgba(6, 182, 212, 0.15);
+            color: #06b6d4;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .ml-badge.ready {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+        .ml-badge.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .ml-prediction-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .ml-prediction-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .ml-prediction-card {
+            background: var(--surface-hover);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+        .ml-prediction-label {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        .ml-prediction-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .ml-confidence-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-subtle);
+            overflow: hidden;
+            margin-top: 0.75rem;
+        }
+        .ml-confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease, background 0.3s ease;
+        }
+
+        .ml-probabilities {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .ml-prob-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .ml-prob-label {
+            width: 70px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .ml-prob-bar-bg {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--border-subtle);
+            overflow: hidden;
+        }
+        .ml-prob-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+        .ml-prob-pct {
+            width: 45px;
+            text-align: right;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--text-tertiary);
+        }
+
+        .notification-banner {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            animation: slideDown 0.4s ease-out;
+        }
+        .notification-banner.show { display: flex; }
+        .notification-banner.warning {
+            background: rgba(249, 115, 22, 0.15);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            color: #f97316;
+        }
+        .notification-banner.critical {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -262,6 +418,41 @@
 
                 <div class="chart-container" id="chartWrapper" style="display:none;">
                     <canvas id="energyChart"></canvas>
+                </div>
+
+                <!-- ML Notification Banner -->
+                <div class="notification-banner" id="mlNotificationBanner">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    <span id="mlNotificationText">—</span>
+                </div>
+
+                <!-- ML Prediction Section -->
+                <div class="ml-section">
+                    <div class="ml-section-header">
+                        <h3>🧠 ML Warning Prediction
+                            <span class="ml-badge loading" id="mlBadge">Training Model...</span>
+                        </h3>
+                    </div>
+                    <div class="ml-prediction-grid">
+                        <div class="ml-prediction-card">
+                            <div class="ml-prediction-label">ML Predicted Class</div>
+                            <div class="ml-prediction-value" id="mlPredictedClass" style="color: var(--text-tertiary);">—</div>
+                            <div style="font-size:0.8rem; color:var(--text-tertiary);" id="mlConfidenceText">Waiting for model...</div>
+                            <div class="ml-confidence-bar">
+                                <div class="ml-confidence-fill" id="mlConfidenceBar" style="width:0%; background:#06b6d4;"></div>
+                            </div>
+                        </div>
+                        <div class="ml-prediction-card">
+                            <div class="ml-prediction-label">Class Probabilities</div>
+                            <div class="ml-probabilities" id="mlProbabilities">
+                                <div class="ml-prob-row"><span class="ml-prob-label">SAFE</span><div class="ml-prob-bar-bg"><div class="ml-prob-bar-fill" id="prob-safe" style="width:0%;background:#10b981;"></div></div><span class="ml-prob-pct" id="pct-safe">—</span></div>
+                                <div class="ml-prob-row"><span class="ml-prob-label">NOTICE</span><div class="ml-prob-bar-bg"><div class="ml-prob-bar-fill" id="prob-notice" style="width:0%;background:#10b981;"></div></div><span class="ml-prob-pct" id="pct-notice">—</span></div>
+                                <div class="ml-prob-row"><span class="ml-prob-label">CAUTION</span><div class="ml-prob-bar-bg"><div class="ml-prob-bar-fill" id="prob-caution" style="width:0%;background:#eab308;"></div></div><span class="ml-prob-pct" id="pct-caution">—</span></div>
+                                <div class="ml-prob-row"><span class="ml-prob-label">WARNING</span><div class="ml-prob-bar-bg"><div class="ml-prob-bar-fill" id="prob-warning" style="width:0%;background:#f97316;"></div></div><span class="ml-prob-pct" id="pct-warning">—</span></div>
+                                <div class="ml-prob-row"><span class="ml-prob-label">CRITICAL</span><div class="ml-prob-bar-bg"><div class="ml-prob-bar-fill" id="prob-critical" style="width:0%;background:#ef4444;"></div></div><span class="ml-prob-pct" id="pct-critical">—</span></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -373,6 +564,7 @@
             document.getElementById('statRecordsSub').textContent = `Updated ${new Date().toLocaleTimeString()}`;
 
             runLandslideAnalysis();
+            runMLPrediction();
         }
 
         function runLandslideAnalysis() {
@@ -535,6 +727,324 @@
             }
         }
 
+        // ============================================
+        //  TensorFlow.js ML Warning Classifier
+        // ============================================
+
+        const ML_CLASS_NAMES = ['SAFE', 'NOTICE', 'CAUTION', 'WARNING', 'CRITICAL'];
+        const ML_CLASS_COLORS = ['#10b981', '#10b981', '#eab308', '#f97316', '#ef4444'];
+        const ML_MODEL_KEY = 'indexeddb://acoustics-warning-model';
+
+        const FEATURE_RANGES = {
+            meanAmplitude:  { min: 30,    max: 100 },
+            maxAmplitude:   { min: 30,    max: 100 },
+            meanFreq:       { min: 20,    max: 1000 },
+            meanEnergy:     { min: 0,     max: 50000 },
+            cumulEnergy:    { min: 0,     max: 600 },
+            meanRiseTime:   { min: 0,     max: 5000 },
+            meanDuration:   { min: 0,     max: 50000 },
+            totalHits:      { min: 0,     max: 10000 },
+            hitRate:        { min: 0,     max: 200 },
+            energyRate:     { min: 0,     max: 100 }
+        };
+
+        let mlModel = null;
+        let lastNotificationTime = 0;
+        let lastNotifiedLevel = '';
+        const NOTIFICATION_COOLDOWN = 30000; // 30 seconds
+
+        // --- Model Training (synthetic data) ---
+
+        function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+        function gaussNoise(mean, std) {
+            const u1 = Math.random(), u2 = Math.random();
+            return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        }
+
+        function generateClassFeatures(classIdx) {
+            const profiles = [
+                // SAFE
+                { meanAmp: [40,5], maxAmpOff: [0,10], freq: [150,50], energy: [500,300], cumE: [10,8], rise: [200,100], dur: [2000,1000], hits: [50,30], hitR: [5,3], enR: [1,0.8],
+                  ampClamp: [30,55], maxClamp: [30,60], freqClamp: [20,400], enClamp: [0,2000], cumClamp: [0,30], riseClamp: [0,800], durClamp: [0,8000], hitsClamp: [1,200], hitRClamp: [0,20], enRClamp: [0,5] },
+                // NOTICE
+                { meanAmp: [52,6], maxAmpOff: [3,15], freq: [250,80], energy: [3000,1500], cumE: [60,20], rise: [500,200], dur: [5000,2000], hits: [300,150], hitR: [20,10], enR: [8,4],
+                  ampClamp: [40,65], maxClamp: [45,75], freqClamp: [50,500], enClamp: [500,8000], cumClamp: [30,100], riseClamp: [100,1500], durClamp: [1000,15000], hitsClamp: [50,800], hitRClamp: [5,50], enRClamp: [2,20] },
+                // CAUTION
+                { meanAmp: [62,6], maxAmpOff: [5,18], freq: [350,100], energy: [10000,5000], cumE: [180,60], rise: [1000,400], dur: [12000,5000], hits: [1000,500], hitR: [50,20], enR: [25,10],
+                  ampClamp: [50,78], maxClamp: [55,85], freqClamp: [100,600], enClamp: [2000,25000], cumClamp: [100,300], riseClamp: [200,2500], durClamp: [3000,30000], hitsClamp: [200,3000], hitRClamp: [15,100], enRClamp: [8,50] },
+                // WARNING
+                { meanAmp: [75,7], maxAmpOff: [5,15], freq: [450,120], energy: [25000,10000], cumE: [380,60], rise: [2000,600], dur: [25000,8000], hits: [3000,1500], hitR: [100,40], enR: [55,20],
+                  ampClamp: [60,90], maxClamp: [70,95], freqClamp: [150,800], enClamp: [8000,45000], cumClamp: [300,500], riseClamp: [500,3500], durClamp: [8000,45000], hitsClamp: [800,7000], hitRClamp: [30,160], enRClamp: [20,85] },
+                // CRITICAL
+                { meanAmp: [88,6], maxAmpOff: [3,12], freq: [600,150], energy: [40000,8000], cumE: [550,40], rise: [3000,800], dur: [35000,10000], hits: [6000,2000], hitR: [150,30], enR: [80,15],
+                  ampClamp: [75,100], maxClamp: [80,100], freqClamp: [200,1000], enClamp: [20000,50000], cumClamp: [500,600], riseClamp: [1000,5000], durClamp: [15000,50000], hitsClamp: [3000,10000], hitRClamp: [80,200], enRClamp: [50,100] }
+            ];
+            const p = profiles[classIdx];
+            const meanAmp = clamp(gaussNoise(...p.meanAmp), ...p.ampClamp);
+            const maxAmp = clamp(meanAmp + (p.maxAmpOff[0] + Math.random() * (p.maxAmpOff[1] - p.maxAmpOff[0])), ...p.maxClamp);
+            return [
+                meanAmp, maxAmp,
+                clamp(gaussNoise(...p.freq), ...p.freqClamp),
+                clamp(gaussNoise(...p.energy), ...p.enClamp),
+                clamp(gaussNoise(...p.cumE), ...p.cumClamp),
+                clamp(gaussNoise(...p.rise), ...p.riseClamp),
+                clamp(gaussNoise(...p.dur), ...p.durClamp),
+                clamp(Math.floor(gaussNoise(...p.hits)), ...p.hitsClamp),
+                clamp(gaussNoise(...p.hitR), ...p.hitRClamp),
+                clamp(gaussNoise(...p.enR), ...p.enRClamp)
+            ];
+        }
+
+        function normalizeFeatures(features) {
+            const keys = Object.keys(FEATURE_RANGES);
+            return features.map((val, i) => {
+                const r = FEATURE_RANGES[keys[i]];
+                return clamp((val - r.min) / (r.max - r.min), 0, 1);
+            });
+        }
+
+        async function buildAndTrainModel() {
+            // Try loading from cache first
+            try {
+                mlModel = await tf.loadLayersModel(ML_MODEL_KEY);
+                console.log('ML model loaded from IndexedDB cache');
+                updateMLBadge('ready', 'Model Ready');
+                return;
+            } catch (e) {
+                console.log('No cached model found, training new one...');
+            }
+
+            updateMLBadge('loading', 'Training Model...');
+
+            // Generate synthetic data
+            const xs = [], ys = [];
+            for (let i = 0; i < 12000; i++) {
+                const cls = Math.floor(Math.random() * 5);
+                xs.push(normalizeFeatures(generateClassFeatures(cls)));
+                ys.push(cls);
+            }
+
+            const xsTensor = tf.tensor2d(xs);
+            const ysTensor = tf.oneHot(tf.tensor1d(ys, 'int32'), 5);
+
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ inputShape: [10], units: 64, activation: 'relu' }));
+            model.add(tf.layers.batchNormalization());
+            model.add(tf.layers.dropout({ rate: 0.3 }));
+            model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+            model.add(tf.layers.batchNormalization());
+            model.add(tf.layers.dropout({ rate: 0.2 }));
+            model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+            model.add(tf.layers.dense({ units: 5, activation: 'softmax' }));
+
+            model.compile({
+                optimizer: tf.train.adam(0.001),
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            const splitIdx = Math.floor(xs.length * 0.8);
+            const xTrain = xsTensor.slice([0, 0], [splitIdx, 10]);
+            const yTrain = ysTensor.slice([0, 0], [splitIdx, 5]);
+
+            await model.fit(xTrain, yTrain, {
+                epochs: 40,
+                batchSize: 64,
+                shuffle: true,
+                verbose: 0
+            });
+
+            // Save to IndexedDB
+            await model.save(ML_MODEL_KEY);
+            mlModel = model;
+
+            // Cleanup
+            xsTensor.dispose(); ysTensor.dispose();
+            xTrain.dispose(); yTrain.dispose();
+
+            console.log('ML model trained and cached');
+            updateMLBadge('ready', 'Model Ready');
+        }
+
+        function updateMLBadge(status, text) {
+            const badge = document.getElementById('mlBadge');
+            badge.className = 'ml-badge ' + status;
+            badge.textContent = text;
+        }
+
+        // --- Feature Extraction from Real Data ---
+
+        function extractFeatures(data) {
+            if (!data || data.length === 0) return null;
+
+            // Use last 50 records (or all if fewer)
+            const window = data.slice(-50);
+
+            let amplitudes = [], frequencies = [], energies = [], riseTimes = [], durations = [], hitCounts = [];
+            let timestamps = [];
+
+            window.forEach(row => {
+                const amp = parseFloat(String(row['Amplitude (dB)'] || row['Amplitude'] || '0').replace(/,/g, ''));
+                const freq = parseFloat(String(row['P-Freq (kHz)'] || row['Frequency'] || '0').replace(/,/g, ''));
+                const energy = parseFloat(String(row['Energy (pJ)'] || row['Energy'] || '0').replace(/,/g, ''));
+                const rise = parseFloat(String(row['Rise Time (µs)'] || row['Rise Time'] || '0').replace(/,/g, ''));
+                const dur = parseFloat(String(row['Duration (µs)'] || row['Duration'] || '0').replace(/,/g, ''));
+                const count = parseInt(String(row['HIT Count'] || row['Count'] || '1').replace(/,/g, ''));
+                const time = row['DAQ Time (GMT)'] || row['Time'] || '';
+
+                if (!isNaN(amp)) amplitudes.push(amp);
+                if (!isNaN(freq)) frequencies.push(freq);
+                if (!isNaN(energy)) energies.push(energy);
+                if (!isNaN(rise)) riseTimes.push(rise);
+                if (!isNaN(dur)) durations.push(dur);
+                if (!isNaN(count)) hitCounts.push(count);
+                if (time) timestamps.push(time);
+            });
+
+            if (amplitudes.length === 0) return null;
+
+            const mean = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+            const max = arr => arr.length ? Math.max(...arr) : 0;
+            const sum = arr => arr.reduce((a, b) => a + b, 0);
+
+            // Compute cumulative energy for ALL data (not just window)
+            let cumulEnergy = 0;
+            data.forEach(row => {
+                const e = parseFloat(String(row['Energy (pJ)'] || row['Energy'] || '0').replace(/,/g, ''));
+                if (!isNaN(e)) cumulEnergy += e / 1000000; // pJ → µJ
+            });
+
+            const totalHits = sum(hitCounts);
+
+            // Estimate hit rate and energy rate (per minute)
+            // If we have timestamps, try to compute duration span
+            let spanMinutes = window.length / 10; // fallback: assume ~10 hits per minute
+            if (timestamps.length >= 2) {
+                try {
+                    const parseT = t => {
+                        const parts = String(t).split(':').map(Number);
+                        return parts[0] * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+                    };
+                    const t0 = parseT(timestamps[0]);
+                    const tN = parseT(timestamps[timestamps.length - 1]);
+                    const diff = Math.abs(tN - t0);
+                    if (diff > 0) spanMinutes = diff / 60;
+                } catch (e) { /* use fallback */ }
+            }
+            const hitRate = spanMinutes > 0 ? totalHits / spanMinutes : 0;
+            const energyRate = spanMinutes > 0 ? (sum(energies) / 1000000) / spanMinutes : 0;
+
+            return [
+                mean(amplitudes),     // meanAmplitude
+                max(amplitudes),      // maxAmplitude
+                mean(frequencies),    // meanFreq
+                mean(energies),       // meanEnergy
+                cumulEnergy,          // cumulEnergy (µJ)
+                mean(riseTimes),      // meanRiseTime
+                mean(durations),      // meanDuration
+                totalHits,            // totalHits
+                hitRate,              // hitRate
+                energyRate            // energyRate
+            ];
+        }
+
+        // --- ML Prediction ---
+
+        async function runMLPrediction() {
+            if (!mlModel || allData.length === 0) return;
+
+            const rawFeatures = extractFeatures(allData);
+            if (!rawFeatures) return;
+
+            const normalized = normalizeFeatures(rawFeatures);
+            const inputTensor = tf.tensor2d([normalized]);
+            const prediction = mlModel.predict(inputTensor);
+            const probabilities = await prediction.data();
+            inputTensor.dispose();
+            prediction.dispose();
+
+            const maxIdx = probabilities.indexOf(Math.max(...probabilities));
+            const confidence = probabilities[maxIdx];
+            const predictedClass = ML_CLASS_NAMES[maxIdx];
+            const color = ML_CLASS_COLORS[maxIdx];
+
+            // Update UI
+            const classEl = document.getElementById('mlPredictedClass');
+            classEl.textContent = predictedClass;
+            classEl.style.color = color;
+
+            document.getElementById('mlConfidenceText').textContent =
+                `Confidence: ${(confidence * 100).toFixed(1)}%`;
+
+            const bar = document.getElementById('mlConfidenceBar');
+            bar.style.width = (confidence * 100) + '%';
+            bar.style.background = color;
+
+            // Update probability bars
+            ML_CLASS_NAMES.forEach((name, i) => {
+                const pct = probabilities[i] * 100;
+                const key = name.toLowerCase();
+                document.getElementById('prob-' + key).style.width = pct + '%';
+                document.getElementById('pct-' + key).textContent = pct.toFixed(1) + '%';
+            });
+
+            // Handle notifications
+            if (maxIdx >= 3) { // WARNING or CRITICAL
+                handleWarningNotification(predictedClass, confidence, rawFeatures[4]); // pass cumulEnergy
+            } else {
+                hideNotificationBanner();
+            }
+        }
+
+        // --- Browser Push Notifications ---
+
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        function handleWarningNotification(level, confidence, cumulEnergy) {
+            const now = Date.now();
+            const notificationsEnabled = localStorage.getItem('mlPushNotifications') !== 'false';
+
+            // Show in-page banner
+            const banner = document.getElementById('mlNotificationBanner');
+            banner.className = 'notification-banner show ' + (level === 'CRITICAL' ? 'critical' : 'warning');
+            document.getElementById('mlNotificationText').textContent =
+                `⚠️ ML Model detected ${level} state — ${(confidence * 100).toFixed(1)}% confidence — Cumulative Energy: ${cumulEnergy.toFixed(2)} µJ`;
+
+            // Send browser notification (with rate limiting)
+            if (notificationsEnabled &&
+                'Notification' in window &&
+                Notification.permission === 'granted' &&
+                (now - lastNotificationTime > NOTIFICATION_COOLDOWN || lastNotifiedLevel !== level)) {
+
+                new Notification(`🚨 Acoustics Labs — ${level}`, {
+                    body: `ML Model predicts ${level} state with ${(confidence * 100).toFixed(1)}% confidence.\nCumulative Energy: ${cumulEnergy.toFixed(2)} µJ`,
+                    icon: 'logo.webp',
+                    tag: 'acoustics-warning',
+                    requireInteraction: level === 'CRITICAL'
+                });
+
+                lastNotificationTime = now;
+                lastNotifiedLevel = level;
+            }
+        }
+
+        function hideNotificationBanner() {
+            const banner = document.getElementById('mlNotificationBanner');
+            banner.className = 'notification-banner';
+        }
+
+        // --- Initialize ML System ---
+        document.addEventListener('DOMContentLoaded', () => {
+            requestNotificationPermission();
+            buildAndTrainModel().then(() => {
+                // Run prediction once data is available
+                if (allData.length > 0) runMLPrediction();
+            });
+        });
 
     </script>
 </body>
