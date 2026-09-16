@@ -347,6 +347,12 @@
             updateNavStatus(true);
             document.getElementById('displaySheetName').textContent = currentSheetName;
             fetchSheetData();
+
+            // Auto-refresh based on settings interval (default 5 seconds)
+            const intervalSec = parseInt(localStorage.getItem('refreshInterval') || '5', 10);
+            setInterval(() => {
+                silentRefresh();
+            }, intervalSec * 1000);
         });
 
         // ============================================
@@ -665,6 +671,31 @@
                         document.getElementById('lastFetched').textContent = `Last updated ${formatTime(lastFetchTime)}`;
                     });
             }, 300);
+        }
+
+        // ============================================
+        //  Silent Auto-Refresh (no spinner/toast)
+        // ============================================
+        function silentRefresh() {
+            const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(currentSheetName)}&_t=${Date.now()}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.text();
+                })
+                .then(text => {
+                    const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
+                    if (!jsonStr || !jsonStr[1]) throw new Error('Invalid response');
+                    const data = JSON.parse(jsonStr[1]);
+                    if (data.status === 'error') throw new Error(data.errors?.[0]?.detailed_message || 'API error');
+
+                    processSheetData(data.table);
+                    document.getElementById('lastFetched').textContent = `Auto-refreshed ${formatTime(new Date())}`;
+                })
+                .catch(err => {
+                    console.warn('Silent refresh failed:', err.message);
+                });
         }
 
         // ============================================

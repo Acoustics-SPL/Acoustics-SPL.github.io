@@ -137,15 +137,15 @@
 
                     <div class="setting-row">
                         <div class="setting-info">
-                            <h4>Refresh Interval</h4>
-                            <p>How often to refresh data (in seconds)</p>
+                            <h4>Auto-Reanalyze & Refresh Interval</h4>
+                            <p>How often to auto reanalyze and refresh data</p>
                         </div>
-                        <select class="setting-select" onchange="markChanged()">
-                            <option value="5">5 seconds</option>
-                            <option value="10" selected>10 seconds</option>
+                        <select class="setting-select" id="refreshInterval" onchange="markChanged()">
+                            <option value="3">3 seconds</option>
+                            <option value="5" selected>5 seconds</option>
+                            <option value="10">10 seconds</option>
                             <option value="30">30 seconds</option>
                             <option value="60">1 minute</option>
-                            <option value="300">5 minutes</option>
                         </select>
                     </div>
 
@@ -456,6 +456,11 @@
             if (!requireAuth()) return;
             updateNavStatus(true);
             fetchAvailableSheets();
+
+            // Restore saved refresh interval
+            const savedInterval = localStorage.getItem('refreshInterval') || '5';
+            const intervalSelect = document.getElementById('refreshInterval');
+            if (intervalSelect) intervalSelect.value = savedInterval;
         });
 
         function fetchAvailableSheets() {
@@ -511,6 +516,13 @@
         function saveSettings() {
             hasChanges = false;
             document.getElementById('saveBar').classList.remove('visible');
+
+            // Persist refresh interval to localStorage
+            const intervalSelect = document.getElementById('refreshInterval');
+            if (intervalSelect) {
+                localStorage.setItem('refreshInterval', intervalSelect.value);
+            }
+
             showToast('Settings saved successfully');
         }
 

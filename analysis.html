@@ -311,6 +311,12 @@
             updateNavStatus(true);
             document.getElementById('displaySheetName').textContent = currentSheetName;
             fetchSheetData();
+
+            // Auto-reanalyze & refresh based on settings interval (default 5 seconds)
+            const intervalSec = parseInt(localStorage.getItem('refreshInterval') || '5', 10);
+            setInterval(() => {
+                fetchSheetData();
+            }, intervalSec * 1000);
         });
 
         function switchTab(tab) {
