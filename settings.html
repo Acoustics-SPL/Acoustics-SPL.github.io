@@ -254,7 +254,7 @@
                     <div class="setting-row">
                         <div class="setting-info">
                             <h4>Energy Decay Rate</h4>
-                            <p>Rate at which cumulative energy decays (µJ per minute)</p>
+                            <p>Rate at which retained energy decays within the five-minute analysis window (µJ per minute)</p>
                         </div>
                         <select class="setting-select" id="energyDecayRate" onchange="saveDecayRate()">
                             <option value="1">1 µJ / min</option>
@@ -292,8 +292,8 @@
 
                     <div class="setting-row">
                         <div class="setting-info">
-                            <h4>ML Push Notifications</h4>
-                            <p>Browser push notifications when TensorFlow.js ML model detects WARNING or CRITICAL states</p>
+                            <h4>Acoustic Push Notifications</h4>
+                            <p>Browser notifications when live acoustic energy reaches WARNING or CRITICAL thresholds</p>
                         </div>
                         <label class="toggle-switch">
                             <input type="checkbox" id="mlPushToggle" checked onchange="toggleMLPush(this)">
@@ -638,3 +638,4 @@
     </script>
 </body>
 </html>
+
